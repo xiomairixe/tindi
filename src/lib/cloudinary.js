@@ -20,9 +20,16 @@ export async function uploadImageToCloudinary(file, folder = 'inventory') {
     throw new Error('File size exceeds 5MB limit')
   }
 
+  // Validate file type (check both MIME type and extension as fallback)
   const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-  if (!validTypes.includes(file.type)) {
-    throw new Error('Invalid file type. Allowed: JPEG, PNG, WebP, GIF')
+  const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif']
+  const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
+  
+  const isValidType = validTypes.includes(file.type) || validExtensions.includes(fileExtension)
+  
+  if (!isValidType) {
+    console.warn(`File type mismatch - MIME: ${file.type}, Extension: ${fileExtension}`)
+    throw new Error(`Invalid file type. Allowed: JPEG, PNG, WebP, GIF (you uploaded: ${fileExtension || file.type || 'unknown'})`)
   }
 
   // Create FormData

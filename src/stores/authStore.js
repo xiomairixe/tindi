@@ -32,7 +32,12 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  _loadStore: async (user) => {
+  // ─── Single source of truth for store creation ──────────────────────────
+  // Tinatawag ito ng onAuthStateChange (sa initializeAuth) at ng signUp/signIn.
+  // Kung walang existing store, gagawa ito ng bago — minsan lang dapat
+  // tumakbo ito kahit ilang beses tumawag dahil nag-check muna ito bago
+  // mag-insert (walang naka-duplicate na insert path).
+  _loadStore: async (user, { storeName, ownerName } = {}) => {
     try {
       let { data: store, error } = await supabase
         .from('stores')
@@ -41,19 +46,41 @@ export const useAuthStore = create((set, get) => ({
         .single()
 
       if (error?.code === 'PGRST116') {
+        // Walang default plan? Hanapin muna ang default plan id (kung meron)
+        const { data: defaultPlan } = await supabase
+          .from('plans')
+          .select('id')
+          .eq('is_default', true)
+          .maybeSingle()
+
         const { data: newStore, error: createError } = await supabase
           .from('stores')
           .insert([{
             user_id: user.id,
-            name: user.email?.split('@')[0] + "'s Store",
-            owner_name: user.email,
-            plan_id: 'basic',
+            name: storeName || (user.user_metadata?.store_name) || (user.email?.split('@')[0] + "'s Store"),
+            owner_name: ownerName || user.user_metadata?.full_name || user.email,
+            email: user.email,
+            plan_id: defaultPlan?.id ?? null, // uuid o null, hindi na text string
           }])
           .select()
           .single()
 
-        if (createError) throw createError
-        store = newStore
+        // Kung may duplicate key error dito (race condition pa rin sa edge case),
+        // i-fetch lang ulit ang existing row sa halip na mag-throw
+        if (createError) {
+          if (createError.code === '23505') {
+            const { data: existing } = await supabase
+              .from('stores')
+              .select('*')
+              .eq('user_id', user.id)
+              .single()
+            store = existing
+          } else {
+            throw createError
+          }
+        } else {
+          store = newStore
+        }
       } else if (error) {
         throw error
       }
@@ -71,20 +98,22 @@ export const useAuthStore = create((set, get) => ({
   signUp: async (email, password, storeName, ownerName) => {
     set({ isLoading: true, error: null })
     try {
-      const { data: { user }, error: signUpError } = await supabase.auth.signUp({ email, password })
+      const { data: { user }, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { store_name: storeName, full_name: ownerName },
+        },
+      })
       if (signUpError) throw signUpError
       if (!user) throw new Error('Sign up failed')
 
-      const { data: store, error: storeError } = await supabase
-        .from('stores')
-        .insert([{ user_id: user.id, name: storeName, owner_name: ownerName, plan_id: 'basic' }])
-        .select()
-        .single()
+      // Huwag na direktang mag-insert dito. Gamitin ang _loadStore (parehong
+      // function na ginagamit ng onAuthStateChange) para iisa lang ang
+      // gumagawa ng store row — iwas duplicate insert / race condition.
+      await get()._loadStore(user, { storeName, ownerName })
 
-      if (storeError) throw storeError
-
-      set({ user, storeId: store.id, store })
-      return { user, store }
+      return { user, store: get().store }
     } catch (err) {
       set({ error: err.message })
       throw err
@@ -100,16 +129,9 @@ export const useAuthStore = create((set, get) => ({
       if (signInError) throw signInError
       if (!user) throw new Error('Sign in failed')
 
-      const { data: store, error: storeError } = await supabase
-        .from('stores')
-        .select('*')
-        .eq('user_id', user.id)
-        .single()
+      await get()._loadStore(user)
 
-      if (storeError && storeError.code !== 'PGRST116') throw storeError
-
-      set({ user, storeId: store?.id || null, store: store || null })
-      return { user, store }
+      return { user, store: get().store }
     } catch (err) {
       set({ error: err.message })
       throw err

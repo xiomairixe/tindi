@@ -14,9 +14,20 @@ const FIXED_CATEGORIES = [
 
 const todayStr = () => new Date().toISOString().split('T')[0]
 
-export default function AddExpenseModal({ isOpen, onClose, storeId, editingExpense }) {
+export default function AddExpenseModal({ 
+  isOpen, 
+  onClose, 
+  storeId, 
+  editingExpense,
+  currentExpenseCount = 0,
+  maxExpenses = null
+}) {
   const { addExpense, updateExpense, addCustomCategory, customCategories } = useExpensesStore()
   const isEditMode = !!editingExpense
+
+  // Check if at expense limit
+  const isAtLimit = maxExpenses !== null && maxExpenses !== -1 && currentExpenseCount >= maxExpenses
+  const canAddExpense = !isAtLimit
 
   const [formData, setFormData] = useState({
     expense_date: todayStr(),
@@ -89,6 +100,12 @@ export default function AddExpenseModal({ isOpen, onClose, storeId, editingExpen
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
+    
+    if (isAtLimit && !isEditMode) {
+      setError(`Umabot na sa limit ng ${maxExpenses} entries. I-upgrade ang plan para mag-add pa.`)
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -127,7 +144,27 @@ export default function AddExpenseModal({ isOpen, onClose, storeId, editingExpen
       size="sm"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {error && (
+        {/* Limit warning banner - only show if not editing */}
+        {isAtLimit && !isEditMode && (
+          <div style={{
+            padding: '12px 14px', background: '#fee2e2', borderRadius: 10,
+            border: '1.5px solid #fecaca', display: 'flex', gap: 8, alignItems: 'flex-start'
+          }}>
+            <i className="ti ti-alert-triangle" style={{ fontSize: 16, color: '#dc2626', flexShrink: 0, marginTop: 2 }} />
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 12, color: '#991b1b', margin: 0, fontWeight: 600 }}>
+                Umabot na sa entry limit
+              </p>
+              <p style={{ fontSize: 11, color: '#a16207', margin: '3px 0 0', lineHeight: 1.4 }}>
+                {maxExpenses === -1
+                  ? 'Unlimited entries sa plan mo.'
+                  : `Nakagawa na ng ${currentExpenseCount}/${maxExpenses} entries. I-upgrade ang plan para mag-add pa.`}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {error && !isAtLimit && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-sm text-red-700">{error}</p>
           </div>
@@ -145,7 +182,8 @@ export default function AddExpenseModal({ isOpen, onClose, storeId, editingExpen
             value={formData.expense_date}
             onChange={handleInputChange}
             max={todayStr()}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm"
+            disabled={isAtLimit && !isEditMode}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
           />
         </div>
 
@@ -159,7 +197,8 @@ export default function AddExpenseModal({ isOpen, onClose, storeId, editingExpen
             name="category"
             value={showCustomInput ? '__custom__' : formData.category}
             onChange={handleCategoryChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm bg-white"
+            disabled={isAtLimit && !isEditMode}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm bg-white disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
           >
             {allCategories.map((cat) => (
               <option key={cat} value={cat}>
@@ -221,7 +260,8 @@ export default function AddExpenseModal({ isOpen, onClose, storeId, editingExpen
             placeholder="0.00"
             step="0.01"
             min="0"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm"
+            disabled={isAtLimit && !isEditMode}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
           />
           <p className="text-xs text-gray-500 mt-1">Halaga ng gastos</p>
         </div>
@@ -238,7 +278,8 @@ export default function AddExpenseModal({ isOpen, onClose, storeId, editingExpen
             onChange={handleInputChange}
             placeholder="e.g., Binayaran si Meralco ngayong buwan"
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm resize-none"
+            disabled={isAtLimit && !isEditMode}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm resize-none disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
           />
         </div>
 
@@ -253,10 +294,18 @@ export default function AddExpenseModal({ isOpen, onClose, storeId, editingExpen
           </button>
           <button
             type="submit"
-            disabled={isLoading}
-            className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:bg-gray-400 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+            disabled={isLoading || (isAtLimit && !isEditMode)}
+            className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium text-sm flex items-center justify-center gap-2"
+            style={{
+              opacity: (isAtLimit && !isEditMode) ? 0.6 : 1
+            }}
           >
-            {isLoading ? (
+            {isAtLimit && !isEditMode ? (
+              <>
+                <i className="ti ti-lock" />
+                Umabot na sa limit
+              </>
+            ) : isLoading ? (
               <>
                 <i className="ti ti-loader-3 animate-spin" />
                 Saving...

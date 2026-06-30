@@ -42,9 +42,21 @@ const PriceRow = ({ label, value }) => (
   </div>
 )
 
-export default function AddProductModal({ isOpen, onClose, isAdvanced, suppliers, storeId }) {
+export default function AddProductModal({ 
+  isOpen, 
+  onClose, 
+  isAdvanced, 
+  suppliers, 
+  storeId,
+  currentProductCount = 0,
+  maxProducts = null
+}) {
   const { addProduct } = useInventoryStore()
   const fileInputRef = useRef(null)
+
+  // Check if at product limit
+  const isAtLimit = maxProducts !== null && maxProducts !== -1 && currentProductCount >= maxProducts
+  const canAddProduct = !isAtLimit
 
   const [formData, setFormData] = useState({
     name: '',
@@ -113,6 +125,12 @@ export default function AddProductModal({ isOpen, onClose, isAdvanced, suppliers
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
+    
+    if (isAtLimit) {
+      setError(`Umabot na sa limit ng ${maxProducts} produkto. I-upgrade ang plan para mag-add pa.`)
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -208,7 +226,27 @@ export default function AddProductModal({ isOpen, onClose, isAdvanced, suppliers
       `}</style>
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {error && (
+        {/* Limit warning banner */}
+        {isAtLimit && (
+          <div style={{
+            padding: '14px 16px', background: '#fee2e2', borderRadius: 12, 
+            border: '1.5px solid #fecaca', display: 'flex', gap: 10, alignItems: 'flex-start'
+          }}>
+            <i className="ti ti-alert-triangle" style={{ fontSize: 18, color: '#dc2626', flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <p style={{ fontSize: 13, color: '#991b1b', margin: 0, fontWeight: 600 }}>
+                Umabot na sa product limit
+              </p>
+              <p style={{ fontSize: 12, color: '#a16207', margin: '4px 0 0', lineHeight: 1.5 }}>
+                {maxProducts === -1 
+                  ? 'Unlimited products sa plan mo.' 
+                  : `Nakadagdag na ka ng ${currentProductCount}/${maxProducts} produkto. I-upgrade ang plan para mag-add pa.`}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {error && !isAtLimit && (
           <div style={{ padding: 14, background: '#fee2e2', borderRadius: 10, border: '1px solid #fecaca' }}>
             <p style={{ fontSize: 13, color: '#991b1b', margin: 0 }}>{error}</p>
           </div>
@@ -271,6 +309,7 @@ export default function AddProductModal({ isOpen, onClose, isAdvanced, suppliers
             onChange={handleInputChange}
             placeholder="e.g., Lucky Me Pancit Canton"
             className="add-product-input"
+            disabled={isAtLimit}
           />
         </div>
 
@@ -285,6 +324,7 @@ export default function AddProductModal({ isOpen, onClose, isAdvanced, suppliers
               value={formData.category}
               onChange={handleInputChange}
               className="add-product-select"
+              disabled={isAtLimit}
             >
               {CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>{cat}</option>
@@ -301,6 +341,7 @@ export default function AddProductModal({ isOpen, onClose, isAdvanced, suppliers
               value={formData.unit_bought}
               onChange={handleUnitChange}
               className="add-product-select"
+              disabled={isAtLimit}
             >
               {UNITS.map((unit) => (
                 <option key={unit} value={unit}>{unit}</option>
@@ -324,6 +365,7 @@ export default function AddProductModal({ isOpen, onClose, isAdvanced, suppliers
               step="1"
               min="1"
               className="add-product-input"
+              disabled={isAtLimit}
             />
             <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 6, margin: 0 }}>
               Ilang piraso bawat {formData.unit_bought}? (e.g., 1 box = 24 pcs)
@@ -346,6 +388,7 @@ export default function AddProductModal({ isOpen, onClose, isAdvanced, suppliers
               step="0.01"
               min="0"
               className="add-product-input"
+              disabled={isAtLimit}
             />
           </div>
 
@@ -362,6 +405,7 @@ export default function AddProductModal({ isOpen, onClose, isAdvanced, suppliers
               step="1"
               min="0"
               className="add-product-input"
+              disabled={isAtLimit}
             />
           </div>
         </div>
@@ -429,6 +473,7 @@ export default function AddProductModal({ isOpen, onClose, isAdvanced, suppliers
               placeholder="0"
               min="0"
               className="add-product-input"
+              disabled={isAtLimit}
             />
           </div>
 
@@ -444,6 +489,7 @@ export default function AddProductModal({ isOpen, onClose, isAdvanced, suppliers
               placeholder="10"
               min="0"
               className="add-product-input"
+              disabled={isAtLimit}
             />
           </div>
         </div>
@@ -458,6 +504,7 @@ export default function AddProductModal({ isOpen, onClose, isAdvanced, suppliers
             value={formData.supplier_id}
             onChange={handleInputChange}
             className="add-product-select"
+            disabled={isAtLimit}
           >
             <option value="">None</option>
             {suppliers?.map((supplier) => (
@@ -478,6 +525,7 @@ export default function AddProductModal({ isOpen, onClose, isAdvanced, suppliers
               value={formData.expiry_date}
               onChange={handleInputChange}
               className="add-product-input"
+              disabled={isAtLimit}
             />
           </div>
         )}
@@ -493,21 +541,29 @@ export default function AddProductModal({ isOpen, onClose, isAdvanced, suppliers
               cursor: 'pointer', transition: 'all 0.15s ease', fontFamily: 'Inter, sans-serif'
             }}
             onMouseOver={(e) => { e.target.style.background = '#f9fafb'; e.target.style.borderColor = '#d1d5db' }}
-            onMouseOut={(e) => { e.target.style.background = '#fff'; e.target.style.borderColor = '#e5e7eb' }}
+            onMouseLeave={(e) => { e.target.style.background = '#fff'; e.target.style.borderColor = '#e5e7eb' }}
           >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || isAtLimit}
             style={{
-              flex: 1, padding: '10px 16px', borderRadius: 10, background: isLoading ? '#d1d5db' : '#16a34a',
-              color: '#fff', fontSize: 14, fontWeight: 600, cursor: isLoading ? 'not-allowed' : 'pointer',
+              flex: 1, padding: '10px 16px', borderRadius: 10, 
+              background: isLoading || isAtLimit ? '#d1d5db' : '#16a34a',
+              color: '#fff', fontSize: 14, fontWeight: 600, 
+              cursor: isLoading || isAtLimit ? 'not-allowed' : 'pointer',
               border: 'none', transition: 'all 0.15s ease', fontFamily: 'Inter, sans-serif',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              opacity: isAtLimit ? 0.6 : 1
             }}
           >
-            {isLoading ? (
+            {isAtLimit ? (
+              <>
+                <i className="ti ti-lock" />
+                Umabot na sa limit
+              </>
+            ) : isLoading ? (
               <>
                 <i className="ti ti-loader-3" style={{ animation: 'spin 1s linear infinite' }} />
                 Nag-add...

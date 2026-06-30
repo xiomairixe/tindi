@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
 import { useUtangStore } from '../../stores/utangStore'
+import { supabase } from '../../lib/supabase'
 import AddDebtorModal from './components/AddDebtOrModal'
 import AddUtangModal from './components/AddUtangModal.jsx'
 import AddPaymentModal from './components/AddPaymentModal'
@@ -222,9 +224,73 @@ function UtangRecordCard({ record, onAddPayment, onDeleteRecord }) {
   )
 }
 
+// ─── Plan Lock Overlay (No Plan) ──────────────────────────────────
+// Ipinapakita sa ibabaw ng blurred content kung walang plan_id ang store.
+function PlanLockOverlay() {
+  const navigate = useNavigate()
+
+  return (
+    <div style={{
+      position: 'absolute',
+      inset: 0,
+      zIndex: 50,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 24,
+      background: 'rgba(249,250,251,0.4)',
+    }}>
+      <div style={{
+        background: '#fff',
+        borderRadius: 20,
+        padding: '32px 28px',
+        maxWidth: 360,
+        width: '100%',
+        textAlign: 'center',
+        boxShadow: '0 20px 50px rgba(0,0,0,0.18)',
+        border: '1px solid #f0f0f0',
+      }}>
+        <div style={{
+          width: 56, height: 56, borderRadius: 14,
+          background: '#fef3c7',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 16px', fontSize: 24,
+        }}>
+          <i className="ti ti-lock" style={{ color: '#d97706', fontSize: 24 }} />
+        </div>
+        <h3 style={{
+          fontSize: 16, fontWeight: 800, color: '#111827', margin: '0 0 8px',
+          fontFamily: 'Plus Jakarta Sans, sans-serif',
+        }}>
+          Hindi Kasama sa Free Plan
+        </h3>
+        <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 20px', lineHeight: 1.6 }}>
+          Ang Utang tracking ay available simula sa Basic Plan pataas. I-upgrade
+          ang plan mo para magamit ang feature na ito.
+        </p>
+        <button
+          onClick={() => navigate('/profile')}
+          style={{
+            width: '100%',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            padding: '11px 0',
+            background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10,
+            fontSize: 13, fontWeight: 700, cursor: 'pointer',
+            fontFamily: 'Inter, sans-serif',
+            boxShadow: '0 4px 12px rgba(22,163,74,0.25)',
+          }}
+        >
+          <i className="ti ti-arrow-up-circle" style={{ fontSize: 14 }} />
+          I-upgrade ang Plan
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Page ───────────────────────────────────────────────────
 export default function UtangPage() {
-  const { storeId, isLoading: authLoading } = useAuthStore()
+  const { storeId, store, isLoading: authLoading } = useAuthStore()
   const {
     debtors,
     utangRecords,
@@ -249,12 +315,53 @@ export default function UtangPage() {
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [recordFilter, setRecordFilter] = useState('all')
 
+  // ── Plan-based access check ──────────────────────────────────────
+  // Utang ay locked sa: No Plan (walang plan_id) AT Free Plan (price = 0).
+  // Available simula Basic Plan pataas. Kinukuha natin ang price mula sa
+  // `plans` table base sa store.plan_id dahil hindi ito kasama sa authStore.
+  const [planPrice, setPlanPrice] = useState(null)
+  const [planLoading, setPlanLoading] = useState(true)
+
   useEffect(() => {
-    if (authLoading || !storeId) return
+    if (authLoading) return
+
+    if (!store?.plan_id) {
+      setPlanPrice(null)
+      setPlanLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setPlanLoading(true)
+    supabase
+      .from('plans')
+      .select('price')
+      .eq('id', store.plan_id)
+      .single()
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) {
+          console.error('Failed to fetch plan price:', error)
+          setPlanPrice(null)
+        } else {
+          setPlanPrice(Number(data?.price ?? 0))
+        }
+        setPlanLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [store?.plan_id, authLoading])
+
+  // Locked kapag walang plan, o Free plan (price === 0). Habang naglo-load
+  // pa ang plan price, huwag munang i-lock (avoid flash of locked state).
+  const hasNoAccess = !authLoading && !planLoading && (!store?.plan_id || planPrice === 0)
+
+  useEffect(() => {
+    if (authLoading || !storeId || hasNoAccess) return
     fetchDebtors(storeId)
     fetchUtangRecords(storeId)
     fetchUtangPayments(storeId)
-  }, [storeId, authLoading])
+  }, [storeId, authLoading, hasNoAccess])
 
   const selectedDebtor = useMemo(
     () => debtors.find((d) => d.id === selectedDebtorId) || null,
@@ -309,7 +416,22 @@ export default function UtangPage() {
   const grandTotal = getGrandTotalBalance()
 
   return (
-    <div style={{ fontFamily: 'Inter, sans-serif', background: '#f9fafb', minHeight: '100vh' }}>
+    <div style={{ position: 'relative' }}>
+      {hasNoAccess && <PlanLockOverlay />}
+
+      <div
+        style={{
+          fontFamily: 'Inter, sans-serif',
+          background: '#f9fafb',
+          minHeight: '100vh',
+          ...(hasNoAccess ? {
+            filter: 'blur(6px)',
+            pointerEvents: 'none',
+            userSelect: 'none',
+          } : {}),
+        }}
+        aria-hidden={hasNoAccess}
+      >
       <style>{`
         .utang-quick-btn {
           display: inline-flex; align-items: center; gap: 8px;
@@ -767,6 +889,7 @@ export default function UtangPage() {
         utangRecord={selectedRecord}
         debtorName={selectedDebtor?.name}
       />
+      </div>
     </div>
   )
 }

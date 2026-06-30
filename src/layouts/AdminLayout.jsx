@@ -11,11 +11,10 @@ export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false)
 
   const navItems = [
-    { path: '/admin', icon: 'ti-users', label: 'User Management' },
-    // Dagdag dito ang future pages
-    // { path: '/admin/analytics', icon: 'ti-chart-bar', label: 'Analytics' },
-    // { path: '/admin/settings', icon: 'ti-settings', label: 'Settings' },
-  ]
+      { path: '/admin',            icon: 'ti-users',   label: 'User Management' },
+      { path: '/admin/plans',      icon: 'ti-license', label: 'Plan Management' },
+      { path: '/admin/payments',   icon: 'ti-receipt', label: 'Payment Requests' }, // ← dagdag ito
+    ]
 
   const handleLogout = async () => {
     setIsLoggingOut(true)

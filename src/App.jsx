@@ -3,6 +3,8 @@ import { useEffect } from 'react'
 import { useAuthStore } from './stores/authStore'
 import AppLayout from './layouts/AppLayout'
 import AdminLayout from './layouts/AdminLayout'
+import ProtectedRoute from './components/ProtectedRoute'
+import AdminProtectedRoute from './components/AdminProtectedRoute'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -13,6 +15,8 @@ import SalesPage from './features/sales/index'
 import ExpensesPage from './features/expenses/index'
 import UtangPage from './features/utang/index'
 import AdminDashboard from './features/admin'
+import PlansPage from './features/admin/plans'
+import PaymentRequestsPage from './features/admin/PaymentRequestsPage'
 import AdminLoginPage from './features/admin/AdminLoginPage'
 import ProfilePage from './pages/ProfilePage'
 
@@ -54,14 +58,17 @@ export default function App() {
 
         {/* ── Super Admin routes ── */}
         <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route element={<AdminLayout />}>
-          <Route path="/admin" element={<AdminDashboard />} />
-          {/* Future admin pages dito: */}
+        <Route element={<AdminProtectedRoute><AdminLayout /></AdminProtectedRoute>}>
+          <Route path="/admin"         element={<AdminDashboard />} />
+          <Route path="/admin/plans"   element={<PlansPage />} />
+          <Route path="/admin/payments" element={<PaymentRequestsPage />} />
           {/* <Route path="/admin/analytics" element={<AdminAnalytics />} /> */}
         </Route>
 
         {/* ── Regular app routes ── */}
-        <Route element={isLoading ? <AuthLoader /> : <AppLayout />}>
+        <Route element={isLoading ? <AuthLoader /> : (
+          <ProtectedRoute><AppLayout /></ProtectedRoute>
+        )}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/sales" element={<SalesPage />} />

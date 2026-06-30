@@ -42,7 +42,7 @@ export const useAdminStore = create((set, get) => ({
       // Fetch from stores table — joined info nandito
       const { data: stores, error: storesError } = await supabase
         .from('stores')
-        .select('id, user_id, name, owner_name, email, plan_id, status, created_at')
+        .select('id, user_id, name, owner_name, email, plan_id, status, created_at, plans(name)')
         .order('created_at', { ascending: false })
 
       if (storesError) throw storesError
@@ -55,6 +55,7 @@ export const useAdminStore = create((set, get) => ({
         full_name: store.owner_name,
         email: store.email,
         plan_id: store.plan_id,
+        plan_name: store.plans?.name ?? null,
         created_at: store.created_at,
       }))
 

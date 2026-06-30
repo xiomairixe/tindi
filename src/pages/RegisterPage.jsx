@@ -1,18 +1,17 @@
 import { useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuthStore } from '../stores/authStore'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const defaultPlan = searchParams.get('plan') || 'basic'
+  const { signUp } = useAuthStore()
 
   const [form, setForm] = useState({
     storeName: '',
+    ownerName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    plan: defaultPlan,
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -37,46 +36,15 @@ export default function RegisterPage() {
 
     setLoading(true)
 
-    const { error: authError } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: {
-        data: {
-          store_name: form.storeName,
-          plan: form.plan,
-        },
-      },
-    })
-
-    if (authError) {
-      setError(authError.message)
+    try {
+      await signUp(form.email, form.password, form.storeName, form.ownerName)
+      navigate('/login?registered=true')
+    } catch (err) {
+      setError(err.message)
+    } finally {
       setLoading(false)
-      return
     }
-
-    navigate('/login?registered=true')
   }
-
-  const plans = [
-    {
-      key: 'basic',
-      label: 'Basic',
-      price: 'Libre',
-      desc: 'Web only, solo tindera/tindero',
-    },
-    {
-      key: 'advanced',
-      label: 'Advanced',
-      price: 'Bayad',
-      desc: 'Web + Mobile, offline sync',
-    },
-    {
-      key: 'pro',
-      label: 'Pro + POS',
-      price: 'Premium',
-      desc: 'Multi-branch, full POS',
-    },
-  ]
 
   return (
     <div style={{
@@ -97,6 +65,7 @@ export default function RegisterPage() {
         @keyframes rp-spin {
           to { transform: rotate(360deg); }
         }
+
         .rp-input {
           width: 100%;
           padding: 10px 14px;
@@ -115,6 +84,7 @@ export default function RegisterPage() {
           box-shadow: 0 0 0 3px rgba(61, 143, 125, 0.12);
         }
         .rp-input::placeholder { color: #9ca3af; }
+
         .rp-submit {
           width: 100%;
           padding: 12px;
@@ -139,6 +109,7 @@ export default function RegisterPage() {
         }
         .rp-submit:active:not(:disabled) { transform: translateY(0) scale(0.98); }
         .rp-submit:disabled { background: #9fd3cb; cursor: not-allowed; }
+
         .rp-spinner {
           width: 14px; height: 14px; border-radius: 50%;
           border: 2px solid rgba(255,255,255,0.4);
@@ -146,6 +117,7 @@ export default function RegisterPage() {
           animation: rp-spin 0.7s linear infinite;
           flex-shrink: 0;
         }
+
         .rp-back {
           display: inline-flex; align-items: center; gap: 6px;
           font-size: 13px; font-weight: 600; color: #6b7280;
@@ -153,27 +125,89 @@ export default function RegisterPage() {
           transition: color 0.2s ease;
         }
         .rp-back:hover { color: #3d8f7d; }
-        .rp-plan-btn {
-          flex: 1;
-          padding: 12px 8px;
-          border-radius: 10px;
-          border: 1.5px solid #e5e7eb;
-          background: #fff;
-          cursor: pointer;
-          text-align: left;
-          transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-          font-family: Inter, sans-serif;
+
+        /* Tablet: 641px - 1024px */
+        @media (max-width: 1024px) {
+          .rp-image-panel {
+            width: 35%;
+          }
+          .rp-form-container {
+            padding: 40px 32px;
+          }
         }
-        .rp-plan-btn:hover { border-color: #3d8f7d; }
-        .rp-plan-btn.active {
-          border-color: #3d8f7d;
-          background: #f0faf8;
-          box-shadow: 0 0 0 3px rgba(61, 143, 125, 0.1);
+
+        /* Mobile: 640px and below */
+        @media (max-width: 640px) {
+          .rp-image-panel {
+            display: none;
+          }
+          .rp-form-container {
+            padding: 32px 24px;
+            width: 100%;
+          }
+          .rp-form-wrapper {
+            max-width: 100% !important;
+          }
+          .rp-header h2 {
+            font-size: 24px !important;
+          }
+          .rp-header p {
+            font-size: 13px !important;
+          }
+          .rp-form-group {
+            margin-bottom: 13px !important;
+          }
+          .rp-input {
+            padding: 10px 12px !important;
+            font-size: 13px !important;
+          }
+          .rp-submit {
+            padding: 11px !important;
+            font-size: 13px !important;
+            margin-top: 16px !important;
+          }
+          .rp-back {
+            font-size: 12px !important;
+            margin-bottom: 24px !important;
+          }
+          .rp-terms {
+            font-size: 11px !important;
+          }
+          .rp-logo-text {
+            font-size: 18px !important;
+          }
+          .rp-tagline-main {
+            font-size: 18px !important;
+          }
+          .rp-tagline-sub {
+            font-size: 12px !important;
+          }
+        }
+
+        /* Small mobile: 480px and below */
+        @media (max-width: 480px) {
+          .rp-form-container {
+            padding: 24px 16px;
+            justify-content: flex-start;
+            padding-top: 40px;
+          }
+          .rp-header h2 {
+            font-size: 22px !important;
+          }
+          .rp-header {
+            margin-bottom: 20px !important;
+          }
+          .rp-form-group {
+            margin-bottom: 12px !important;
+          }
+          .rp-submit {
+            margin-top: 14px !important;
+          }
         }
       `}</style>
 
-      {/* LEFT PANEL — Image */}
-      <div style={{
+      {/* LEFT PANEL — Image (hidden on mobile) */}
+      <div className="rp-image-panel" style={{
         width: '48%',
         minHeight: '100vh',
         position: 'relative',
@@ -202,7 +236,7 @@ export default function RegisterPage() {
         <div style={{ position: 'absolute', top: 32, left: 36, zIndex: 2 }}>
           <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
             <img src="/Tindi.png" alt="Tindi" style={{ width: 36, height: 36, objectFit: 'contain' }} />
-            <span style={{
+            <span className="rp-logo-text" style={{
               color: '#322f2f', fontSize: 22, fontWeight: 900,
               fontFamily: 'Plus Jakarta Sans, sans-serif',
               textShadow: '0 1px 4px rgba(0,0,0,0.25)',
@@ -212,13 +246,13 @@ export default function RegisterPage() {
 
         {/* Bottom tagline */}
         <div style={{ position: 'absolute', bottom: 36, left: 36, right: 36, zIndex: 2 }}>
-          <p style={{
+          <p className="rp-tagline-sub" style={{
             fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.7)',
             margin: '0 0 4px', letterSpacing: '0.5px', textTransform: 'uppercase',
           }}>
             Sari-sari store management
           </p>
-          <p style={{
+          <p className="rp-tagline-main" style={{
             fontSize: 22, fontWeight: 900, color: '#fff',
             fontFamily: 'Plus Jakarta Sans, sans-serif',
             margin: 0, lineHeight: 1.3,
@@ -230,7 +264,7 @@ export default function RegisterPage() {
       </div>
 
       {/* RIGHT PANEL — Register form */}
-      <div style={{
+      <div className="rp-form-container" style={{
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
@@ -241,7 +275,7 @@ export default function RegisterPage() {
         animation: 'rp-slide-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
         overflowY: 'auto',
       }}>
-        <div style={{ width: '100%', maxWidth: 400 }}>
+        <div className="rp-form-wrapper" style={{ width: '100%', maxWidth: 400 }}>
 
           {/* Back link */}
           <Link to="/" className="rp-back" style={{ marginBottom: 32, display: 'inline-flex' }}>
@@ -252,7 +286,7 @@ export default function RegisterPage() {
           </Link>
 
           {/* Header */}
-          <div style={{ marginBottom: 28 }}>
+          <div className="rp-header" style={{ marginBottom: 28 }}>
             <h2 style={{
               fontSize: 28, fontWeight: 900, color: '#111827',
               fontFamily: 'Plus Jakarta Sans, sans-serif', margin: '0 0 6px',
@@ -268,7 +302,7 @@ export default function RegisterPage() {
           </div>
 
           {/* Store name */}
-          <div style={{ marginBottom: 16 }}>
+          <div className="rp-form-group" style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
               Pangalan ng tindahan
             </label>
@@ -283,8 +317,24 @@ export default function RegisterPage() {
             />
           </div>
 
+          {/* Owner name */}
+          <div className="rp-form-group" style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+              Pangalan mo
+            </label>
+            <input
+              className="rp-input"
+              name="ownerName"
+              type="text"
+              placeholder="Juan dela Cruz"
+              value={form.ownerName}
+              onChange={handleChange}
+              required
+            />
+          </div>
+
           {/* Email */}
-          <div style={{ marginBottom: 16 }}>
+          <div className="rp-form-group" style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
               Email
             </label>
@@ -300,7 +350,7 @@ export default function RegisterPage() {
           </div>
 
           {/* Password */}
-          <div style={{ marginBottom: 16 }}>
+          <div className="rp-form-group" style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
               Password
             </label>
@@ -316,7 +366,7 @@ export default function RegisterPage() {
           </div>
 
           {/* Confirm password */}
-          <div style={{ marginBottom: 20 }}>
+          <div className="rp-form-group" style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
               Ulitin ang password
             </label>
@@ -346,14 +396,14 @@ export default function RegisterPage() {
           <button
             className="rp-submit"
             onClick={handleSubmit}
-            disabled={loading || !form.email || !form.password || !form.storeName}
+            disabled={loading || !form.email || !form.password || !form.storeName || !form.ownerName}
           >
             {loading && <span className="rp-spinner" />}
             {loading ? 'Nagre-register...' : 'Gumawa ng account'}
           </button>
 
           {/* Terms note */}
-          <p style={{ fontSize: 12, color: '#9ca3af', textAlign: 'center', marginTop: 16, lineHeight: 1.6 }}>
+          <p className="rp-terms" style={{ fontSize: 12, color: '#9ca3af', textAlign: 'center', marginTop: 16, lineHeight: 1.6 }}>
             Sa pag-register, sumasang-ayon ka sa aming{' '}
             <a href="#" style={{ color: '#6b7280', textDecoration: 'underline' }}>Terms of Service</a>
             {' '}at{' '}

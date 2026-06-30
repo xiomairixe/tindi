@@ -49,6 +49,7 @@ export default function LoginPage() {
         @keyframes lp-spin {
           to { transform: rotate(360deg); }
         }
+
         .lp-input {
           width: 100%;
           padding: 11px 14px;
@@ -69,6 +70,7 @@ export default function LoginPage() {
         .lp-input::placeholder {
           color: #9ca3af;
         }
+
         .lp-submit {
           width: 100%;
           padding: 12px;
@@ -98,6 +100,7 @@ export default function LoginPage() {
           background: #9fd3cb;
           cursor: not-allowed;
         }
+
         .lp-spinner {
           width: 14px;
           height: 14px;
@@ -107,6 +110,7 @@ export default function LoginPage() {
           animation: lp-spin 0.7s linear infinite;
           flex-shrink: 0;
         }
+
         .lp-back {
           display: inline-flex;
           align-items: center;
@@ -121,10 +125,95 @@ export default function LoginPage() {
         .lp-back:hover {
           color: #3d8f7d;
         }
+
+        /* Tablet: 641px - 1024px */
+        @media (max-width: 1024px) {
+          .lp-image-panel {
+            width: 35%;
+          }
+          .lp-form-container {
+            padding: 40px 32px;
+          }
+        }
+
+        /* Mobile: 640px and below */
+        @media (max-width: 640px) {
+          .lp-image-panel {
+            display: none;
+          }
+          .lp-form-container {
+            padding: 32px 24px;
+            width: 100%;
+          }
+          .lp-form-wrapper {
+            max-width: 100% !important;
+          }
+          .lp-header h2 {
+            font-size: 24px !important;
+          }
+          .lp-header p {
+            font-size: 13px !important;
+          }
+          .lp-submit {
+            padding: 11px !important;
+            font-size: 13px !important;
+          }
+          .lp-input {
+            padding: 10px 12px !important;
+            font-size: 13px !important;
+          }
+          .lp-trust-badge {
+            padding: 12px 14px !important;
+            gap: 10px !important;
+          }
+          .lp-trust-badge p:first-child {
+            font-size: 12px !important;
+          }
+          .lp-trust-badge p:last-child {
+            font-size: 11px !important;
+          }
+          .lp-logo-text {
+            font-size: 18px !important;
+          }
+          .lp-back {
+            font-size: 12px !important;
+            margin-bottom: 28px !important;
+          }
+          .lp-tagline-main {
+            font-size: 18px !important;
+          }
+          .lp-tagline-sub {
+            font-size: 12px !important;
+          }
+        }
+
+        /* Small mobile: 480px and below */
+        @media (max-width: 480px) {
+          .lp-form-container {
+            padding: 24px 16px;
+            justify-content: flex-start;
+            padding-top: 40px;
+          }
+          .lp-header h2 {
+            font-size: 22px !important;
+          }
+          .lp-header {
+            margin-bottom: 24px !important;
+          }
+          .lp-input {
+            padding: 10px 12px !important;
+          }
+          .lp-form-group {
+            margin-bottom: 14px !important;
+          }
+          .lp-submit {
+            margin-top: 20px !important;
+          }
+        }
       `}</style>
 
-      {/* LEFT PANEL — Image */}
-      <div style={{
+      {/* LEFT PANEL — Image (hidden on mobile) */}
+      <div className="lp-image-panel" style={{
         width: '48%',
         minHeight: '100vh',
         position: 'relative',
@@ -146,19 +235,11 @@ export default function LoginPage() {
           }}
         />
 
-        {/* Subtle gradient overlay at bottom for logo readability
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.45) 100%)',
-          zIndex: 1,
-        }} /> */}
-
         {/* Logo top-left */}
         <div style={{ position: 'absolute', top: 32, left: 36, zIndex: 2 }}>
           <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
             <img src="/Tindi_Logo.png" alt="Tindi" style={{ width: 36, height: 36, objectFit: 'contain' }} />
-            <span style={{
+            <span className="lp-logo-text" style={{
               color: '#000000', fontSize: 22, fontWeight: 900,
               fontFamily: 'Plus Jakarta Sans, sans-serif',
               textShadow: '0 1px 4px rgba(0,0,0,0.25)',
@@ -170,13 +251,13 @@ export default function LoginPage() {
         <div style={{
           position: 'absolute', bottom: 36, left: 36, right: 36, zIndex: 2,
         }}>
-          <p style={{
+          <p className="lp-tagline-sub" style={{
             fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.7)',
             margin: '0 0 4px', letterSpacing: '0.5px', textTransform: 'uppercase',
           }}>
             Sari-sari store management
           </p>
-          <p style={{
+          <p className="lp-tagline-main" style={{
             fontSize: 22, fontWeight: 900, color: '#fff',
             fontFamily: 'Plus Jakarta Sans, sans-serif',
             margin: 0, lineHeight: 1.3,
@@ -188,7 +269,7 @@ export default function LoginPage() {
       </div>
 
       {/* RIGHT PANEL — Login form */}
-      <div style={{
+      <div className="lp-form-container" style={{
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
@@ -199,7 +280,7 @@ export default function LoginPage() {
         opacity: mounted ? 1 : 0,
         animation: mounted ? 'lp-slide-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none',
       }}>
-        <div style={{ width: '100%', maxWidth: 380 }}>
+        <div className="lp-form-wrapper" style={{ width: '100%', maxWidth: 380 }}>
 
           {/* Back link */}
           <Link to="/" className="lp-back" style={{ marginBottom: 36, display: 'inline-flex' }}>
@@ -210,7 +291,7 @@ export default function LoginPage() {
           </Link>
 
           {/* Header */}
-          <div style={{ marginBottom: 32 }}>
+          <div className="lp-header" style={{ marginBottom: 32 }}>
             <h2 style={{
               fontSize: 28, fontWeight: 900, color: '#111827',
               fontFamily: 'Plus Jakarta Sans, sans-serif', margin: '0 0 6px',
@@ -238,7 +319,7 @@ export default function LoginPage() {
 
           {/* Form */}
           <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: 18 }}>
+            <div className="lp-form-group" style={{ marginBottom: 18 }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
                 Email
               </label>
@@ -252,8 +333,8 @@ export default function LoginPage() {
               />
             </div>
 
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <div className="lp-form-group" style={{ marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 4 }}>
                 <label style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>
                   Password
                 </label>
@@ -271,7 +352,7 @@ export default function LoginPage() {
               />
             </div>
 
-            <div style={{ marginTop: 24, marginBottom: 24 }}>
+            <div className="lp-submit-wrapper" style={{ marginTop: 24, marginBottom: 24 }}>
               <button type="submit" className="lp-submit" disabled={isLoading}>
                 {isLoading && <span className="lp-spinner" />}
                 {isLoading ? 'Naglo-login...' : 'Mag-login'}
@@ -280,7 +361,7 @@ export default function LoginPage() {
           </form>
 
           {/* Trust badge */}
-          <div style={{
+          <div className="lp-trust-badge" style={{
             background: '#f9fafb', border: '1.5px solid #e8f5f3', borderRadius: 10,
             padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12,
           }}>
