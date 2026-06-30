@@ -93,7 +93,7 @@ function UtangRecordCard({ record, onAddPayment, onDeleteRecord }) {
       transition: 'all 0.15s ease',
     }}>
       <div style={{ marginBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
               <p style={{ fontSize: 13, fontWeight: 700, color: '#111827', margin: 0 }}>
@@ -420,6 +420,7 @@ export default function UtangPage() {
       {hasNoAccess && <PlanLockOverlay />}
 
       <div
+        className="utang-page-root"
         style={{
           fontFamily: 'Inter, sans-serif',
           background: '#f9fafb',
@@ -450,6 +451,38 @@ export default function UtangPage() {
           border-color: #86efac; background: #f0fdf4;
           box-shadow: 0 2px 8px rgba(22,163,74,0.12);
         }
+
+        /* Responsive layout containers */
+        .utang-header-inner {
+          display: flex; align-items: flex-start; justify-content: space-between;
+          gap: 16px; flex-wrap: wrap;
+        }
+        .utang-content-wrap {
+          padding-left: 22px; padding-right: 22px; padding-top: 24px; padding-bottom: 96px;
+        }
+        .utang-main-grid {
+          display: grid; grid-template-columns: 330px 1fr; gap: 26px;
+        }
+        .utang-left-panel { display: flex; flex-direction: column; }
+        .utang-debtor-list {
+          flex: 1; display: flex; flex-direction: column; gap: 8px;
+        }
+        .utang-debtor-list.has-selection {
+          max-height: 280px; overflow-y: auto;
+        }
+        .utang-detail-header-row {
+          display: flex; align-items: flex-start; justify-content: space-between;
+          gap: 16px; margin-bottom: 16px; flex-wrap: wrap;
+        }
+        .utang-balance-summary {
+          display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+          padding-top: 16px; border-top: 1px solid #f0f0f0;
+        }
+        .utang-records-toolbar {
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 12px; margin-bottom: 16px; flex-wrap: wrap;
+        }
+
         /* Floating Action Button */
         .utang-fab {
           position: fixed;
@@ -482,6 +515,49 @@ export default function UtangPage() {
           transform: translateY(0);
           box-shadow: 0 4px 12px rgba(22,163,74,0.3);
         }
+
+        /* ── MOBILE / TABLET ── */
+        @media (max-width: 768px) {
+          .utang-header-inner { padding-right: 0; }
+          .utang-content-wrap {
+            padding-left: 14px; padding-right: 14px; padding-top: 16px; padding-bottom: 110px;
+          }
+          .utang-main-grid {
+            grid-template-columns: 1fr; gap: 18px;
+          }
+          .utang-debtor-list.has-selection {
+            max-height: 220px;
+          }
+          .utang-balance-summary {
+            grid-template-columns: 1fr 1fr; row-gap: 14px;
+          }
+          .utang-balance-summary > div:nth-child(2) {
+            border-left: none !important; border-right: none !important;
+          }
+          .utang-balance-summary > div:nth-child(3) {
+            grid-column: 1 / -1;
+            border-top: 1px solid #f0f0f0; padding-top: 12px;
+          }
+          .utang-records-toolbar {
+            flex-direction: column; align-items: stretch;
+          }
+          .utang-records-toolbar > div:first-child {
+            width: 100%; justify-content: space-between;
+          }
+          .utang-quick-btn { width: 100%; justify-content: center; }
+
+          /* keep FAB above bottom nav on mobile */
+          .utang-fab {
+            bottom: 84px;
+            right: 16px;
+            padding: 13px 18px;
+            font-size: 13px;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .utang-fab span { display: none; }
+        }
       `}</style>
 
       {/* ── HEADER ── */}
@@ -493,7 +569,7 @@ export default function UtangPage() {
         paddingLeft: 22,
         paddingRight: 22,
       }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+        <div className="utang-header-inner">
           <div>
             <h1 style={{
               fontSize: 28, fontWeight: 900, color: '#1a3a2a',
@@ -524,7 +600,7 @@ export default function UtangPage() {
         </div>
       </div>
 
-      <div style={{ paddingLeft: 22, paddingRight: 22, paddingTop: 24, paddingBottom: 96 }}>
+      <div className="utang-content-wrap">
         {error && (
           <div style={{
             marginBottom: 16, padding: 14, background: '#fee2e2', border: '1px solid #fecaca',
@@ -536,9 +612,9 @@ export default function UtangPage() {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '330px 1fr', gap: 26 }}>
+        <div className="utang-main-grid">
           {/* ── LEFT PANEL: Debtor List ── */}
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="utang-left-panel">
             {/* Search */}
             <div style={{ position: 'relative', marginBottom: 12 }}>
               <i className="ti ti-search" style={{
@@ -555,6 +631,7 @@ export default function UtangPage() {
                   border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 13,
                   fontFamily: 'Inter, sans-serif', background: '#fff',
                   outline: 'none', transition: 'border-color 0.15s ease',
+                  boxSizing: 'border-box',
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#16a34a'}
                 onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
@@ -562,7 +639,7 @@ export default function UtangPage() {
             </div>
 
             {/* Debtor list */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto' }}>
+            <div className={`utang-debtor-list${selectedDebtorId ? ' has-selection' : ''}`}>
               {isLoading && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {[...Array(4)].map((_, i) => (
@@ -686,7 +763,7 @@ export default function UtangPage() {
                   background: '#fff', borderRadius: 16, border: '1px solid #f0f0f0',
                   boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: 20, marginBottom: 16,
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
+                  <div className="utang-detail-header-row">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                       <div style={{
                         width: 48, height: 48, borderRadius: 12, background: '#d1fae5',
@@ -740,10 +817,7 @@ export default function UtangPage() {
                   )}
 
                   {/* Balance summary row */}
-                  <div style={{
-                    display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12,
-                    paddingTop: 16, borderTop: '1px solid #f0f0f0',
-                  }}>
+                  <div className="utang-balance-summary">
                     <div style={{ textAlign: 'center' }}>
                       <p style={{ fontSize: 11, color: '#9ca3af', margin: '0 0 4px', fontWeight: 500 }}>Total Utang</p>
                       <p style={{ fontSize: 16, fontWeight: 800, color: '#111827', margin: 0, fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
@@ -770,7 +844,7 @@ export default function UtangPage() {
                 </div>
 
                 {/* Records toolbar */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+                <div className="utang-records-toolbar">
                   <div style={{
                     display: 'inline-flex', borderRadius: 10, border: '1px solid #e5e7eb',
                     padding: 4, background: '#f9fafb', gap: 2,
@@ -857,7 +931,7 @@ export default function UtangPage() {
         }}
       >
         <i className="ti ti-user-plus" aria-hidden="true" style={{ fontSize: 16 }} />
-        Bagong Debtor
+        <span>Bagong Debtor</span>
       </button>
 
       {/* Modals */}

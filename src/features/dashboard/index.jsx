@@ -264,12 +264,72 @@ export default function DashboardPage() {
           padding: 10px 18px; border-radius: 10px; font-size: 14px;
           font-weight: 600; cursor: pointer; border: none;
           transition: all 0.15s ease; font-family: Inter, sans-serif;
+          white-space: nowrap;
         }
         .dash-quick-btn:hover { transform: translateY(-1px); }
         .dash-period-btn {
           padding: 5px 12px; border-radius: 6px; font-size: 12px;
           font-weight: 600; cursor: pointer; border: none;
           transition: all 0.15s ease; font-family: Inter, sans-serif;
+        }
+
+        /* ── Layout containers ── */
+        .dash-body { padding: 20px 24px 32px; }
+        .dash-hero { padding: 32px 28px 28px; }
+        .dash-summary-grid {
+          display: grid; grid-template-columns: repeat(4, 1fr);
+          gap: 12px; margin-bottom: 20px;
+        }
+        .dash-quick-actions {
+          display: flex; gap: 10px; margin-bottom: 20px;
+          flex-wrap: wrap; justify-content: flex-end;
+        }
+        .dash-main-grid {
+          display: grid; grid-template-columns: 2fr 1fr;
+          gap: 16px; margin-bottom: 20px;
+        }
+        .dash-bottom-banner {
+          display: flex; align-items: center; gap: 20px;
+          padding: 24px 28px; flex-wrap: wrap;
+        }
+        .dash-bottom-mascot { width: 140px; height: 140px; flex-shrink: 0; }
+        .dash-bottom-text { flex: 1; min-width: 200px; }
+        .dash-pills { display: flex; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
+        .dash-pill { min-width: 110px; }
+
+        /* ── Tablet: ≤1024px ── */
+        @media (max-width: 1024px) {
+          .dash-summary-grid { grid-template-columns: repeat(2, 1fr); }
+          .dash-main-grid { grid-template-columns: 1fr; }
+          .dash-bottom-banner { padding: 22px 24px; }
+          .dash-pills { width: 100%; justify-content: flex-start; }
+        }
+
+        /* ── Mobile: ≤640px ── */
+        @media (max-width: 640px) {
+          .dash-body { padding: 14px 14px 24px; }
+          .dash-hero { padding: 24px 18px 22px; }
+          .dash-hero h1 { font-size: 21px !important; }
+          .dash-hero p { font-size: 12.5px !important; }
+
+          .dash-summary-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }
+
+          .dash-quick-actions { justify-content: stretch; gap: 8px; margin-bottom: 16px; }
+          .dash-quick-btn { flex: 1 1 auto; justify-content: center; padding: 10px 12px; font-size: 13px; }
+
+          .dash-main-grid { gap: 12px; margin-bottom: 16px; }
+
+          .dash-bottom-banner { flex-direction: column; align-items: stretch; text-align: center; padding: 20px 16px; gap: 14px; }
+          .dash-bottom-mascot { width: 90px; height: 90px; margin: 0 auto; }
+          .dash-bottom-text { text-align: center; }
+          .dash-pills { justify-content: center; gap: 8px; }
+          .dash-pill { min-width: 0; flex: 1 1 28%; padding: 10px 8px !important; }
+        }
+
+        @media (max-width: 420px) {
+          .dash-summary-grid { grid-template-columns: 1fr 1fr; }
+          .dash-pills { flex-direction: column; }
+          .dash-pill { flex: 1 1 auto; }
         }
       `}</style>
 
@@ -297,7 +357,7 @@ export default function DashboardPage() {
         }} />
 
         {/* Text content */}
-        <div style={{ position: 'relative', zIndex: 2, padding: '32px 28px 28px' }}>
+        <div className="dash-hero" style={{ position: 'relative', zIndex: 2 }}>
           <h1 style={{
             fontSize: 26, fontWeight: 900, color: '#1a3a2a',
             fontFamily: 'Plus Jakarta Sans, sans-serif',
@@ -312,17 +372,17 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div style={{ padding: '20px 24px 32px' }}>
+      <div className="dash-body">
 
         {/* ── SUMMARY CARDS ── */}
         {isLoading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+          <div className="dash-summary-grid">
             {[...Array(4)].map((_, i) => (
               <div key={i} style={{ background: '#fff', borderRadius: 16, padding: 18, height: 100, animation: 'pulse 1.5s infinite' }} />
             ))}
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+          <div className="dash-summary-grid">
             {summaryCards.map((card) => (
               <div key={card.label} style={{
                 background: '#fff',
@@ -330,6 +390,7 @@ export default function DashboardPage() {
                 padding: '16px 18px',
                 boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
                 border: '1px solid #f0f0f0',
+                minWidth: 0,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                   <p style={{ fontSize: 12, color: '#6b7280', margin: 0, fontWeight: 500 }}>{card.label}</p>
@@ -337,16 +398,22 @@ export default function DashboardPage() {
                     width: 36, height: 36, borderRadius: 10,
                     background: card.iconBg,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
                   }}>
                     {card.icon}
                   </div>
                 </div>
-                <p style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: '0 0 4px', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+                <p style={{
+                  fontSize: 22, fontWeight: 800, color: '#111827', margin: '0 0 4px',
+                  fontFamily: 'Plus Jakarta Sans, sans-serif',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
                   {card.value}
                 </p>
                 <p style={{
                   fontSize: 12, margin: 0,
                   color: card.positive === true ? '#16a34a' : card.positive === false ? '#ea580c' : '#9ca3af',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>
                   {card.sub}
                 </p>
@@ -356,7 +423,7 @@ export default function DashboardPage() {
         )}
 
         {/* ── QUICK ACTIONS ── */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <div className="dash-quick-actions">
           <button
             className="dash-quick-btn"
             onClick={() => navigate('/sales')}
@@ -381,11 +448,11 @@ export default function DashboardPage() {
         </div>
 
         {/* ── CHART + RECENT SALES ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginBottom: 20 }}>
+        <div className="dash-main-grid">
 
           {/* Chart */}
-          <div style={{ background: '#fff', borderRadius: 16, padding: 20, border: '1px solid #f0f0f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 20, border: '1px solid #f0f0f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                   <i className="ti ti-trending-up" style={{ color: '#16a34a', fontSize: 16 }} />
@@ -440,7 +507,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Recent sales */}
-          <div style={{ background: '#fff', borderRadius: 16, padding: 20, border: '1px solid #f0f0f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 20, border: '1px solid #f0f0f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
               <i className="ti ti-star-filled" style={{ color: '#f59e0b', fontSize: 15 }} />
               <p style={{ fontSize: 14, fontWeight: 700, color: '#111827', margin: 0 }}>Pinakabagong Benta</p>
@@ -487,22 +554,21 @@ export default function DashboardPage() {
         </div>
 
         {/* ── BOTTOM BANNER ── */}
-        <div style={{
+        <div className="dash-bottom-banner" style={{
           background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
           borderRadius: 20, border: '1px solid #bbf7d0',
-          padding: '24px 28px',
-          display: 'flex', alignItems: 'center', gap: 20,
           overflow: 'hidden', position: 'relative',
         }}>
           {/* Mascot */}
           <img
             src="/Tindi_Head.png"
             alt="Tindi"
-            style={{ width: 140, height: 140, objectFit: 'contain', flexShrink: 0 }}
+            className="dash-bottom-mascot"
+            style={{ objectFit: 'contain' }}
           />
 
           {/* Text */}
-          <div style={{ flex: 1 }}>
+          <div className="dash-bottom-text">
             <h3 style={{ fontSize: 18, fontWeight: 900, color: '#14532d', fontFamily: 'Plus Jakarta Sans, sans-serif', margin: '0 0 4px' }}>
               Tuloy ang Tindi! 🌱
             </h3>
@@ -512,15 +578,15 @@ export default function DashboardPage() {
           </div>
 
           {/* Feature pills */}
-          <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+          <div className="dash-pills">
             {[
               { icon: '🛒', label: 'Itala', sub: 'Bawat transaksyon ay mahalaga.', color: '#16a34a' },
               { icon: '📊', label: 'I-track', sub: 'Bantayan ang kita at gastos.', color: '#f97316' },
               { icon: '🚀', label: 'I-grow', sub: 'Palaguin ang iyong tindahan!', color: '#7c3aed' },
             ].map((item) => (
-              <div key={item.label} style={{
+              <div key={item.label} className="dash-pill" style={{
                 background: '#fff', borderRadius: 14, padding: '14px 16px',
-                border: '1px solid #e5e7eb', minWidth: 110, textAlign: 'center',
+                border: '1px solid #e5e7eb', textAlign: 'center',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
               }}>
                 <div style={{ fontSize: 22, marginBottom: 6 }}>{item.icon}</div>

@@ -75,6 +75,7 @@ export default function InventoryPage() {
           font-weight: 600; cursor: pointer; border: none;
           transition: all 0.15s ease; font-family: Inter, sans-serif;
           background: #16a34a; color: #fff; box-shadow: 0 4px 12px rgba(22,163,74,0.25);
+          white-space: nowrap;
         }
         .inv-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(22,163,74,0.3); }
         .inv-btn-secondary {
@@ -82,19 +83,74 @@ export default function InventoryPage() {
           padding: 10px 16px; border-radius: 10px; font-size: 14px;
           font-weight: 600; cursor: pointer; border: 1.5px solid #e5e7eb;
           background: #fff; color: #374151; transition: all 0.15s ease;
-          font-family: Inter, sans-serif;
+          font-family: Inter, sans-serif; white-space: nowrap;
         }
         .inv-btn-secondary:hover { background: #f9fafb; border-color: #d1d5db; }
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
+
+        /* ── Layout containers ── */
+        .inv-header { padding: 24px 28px; }
+        .inv-header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+        .inv-filters { padding: 16px 28px; }
+        .inv-content { padding: 24px 28px; }
+        .inv-grid {
+          display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;
+        }
+
+        /* ── FAB ── */
+        .inv-fab {
+          position: fixed;
+          bottom: 28px;
+          right: 28px;
+          border-radius: 999px;
+          padding: 14px 22px;
+          font-size: 15px;
+          box-shadow: 0 8px 24px rgba(22,163,74,0.35);
+          z-index: 50;
+        }
+
+        /* ── Tablet: ≤1024px ── */
+        @media (max-width: 1024px) {
+          .inv-header { padding: 20px 20px; }
+          .inv-filters { padding: 14px 20px; }
+          .inv-content { padding: 20px 20px; }
+        }
+
+        /* ── Mobile: ≤640px ── */
+        @media (max-width: 640px) {
+          .inv-header { padding: 16px 16px; }
+          .inv-header-row { flex-direction: column; align-items: stretch; gap: 12px; margin-bottom: 12px; }
+          .inv-header-row h1 { font-size: 22px !important; }
+          .inv-btn-secondary { justify-content: center; }
+
+          .inv-filters { padding: 12px 16px; }
+          .inv-filters > div { flex-wrap: wrap; }
+          .inv-select { width: 100%; }
+
+          .inv-content { padding: 16px 16px 100px; }
+          .inv-grid { grid-template-columns: 1fr; gap: 12px; }
+
+          /* Lift FAB above the fixed mobile bottom nav (~64px) + safe area */
+          .inv-fab {
+            bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+            right: 16px;
+            padding: 13px 18px;
+            font-size: 14px;
+          }
+        }
+
+        @media (max-width: 400px) {
+          .inv-grid { grid-template-columns: 1fr; }
+        }
       `}</style>
 
       {/* ── HEADER ── */}
       <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb', paddingBottom: 0 }}>
-        <div style={{ maxWidth: '100%', padding: '24px 28px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
+        <div className="inv-header" style={{ maxWidth: '100%' }}>
+          <div className="inv-header-row">
             <div>
               <h1 style={{ fontSize: 28, fontWeight: 900, color: '#1a3a2a', fontFamily: 'Plus Jakarta Sans, sans-serif', margin: '0 0 4px' }}>
                 Inventory
@@ -111,7 +167,7 @@ export default function InventoryPage() {
       </div>
 
       {/* ── SEARCH & FILTER ── */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb', padding: '16px 28px', position: 'sticky', top: 0, zIndex: 20 }}>
+      <div className="inv-filters" style={{ background: '#fff', borderBottom: '1px solid #e5e7eb', position: 'sticky', top: 0, zIndex: 20 }}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ flex: 1, minWidth: 240, position: 'relative' }}>
             <input
@@ -135,7 +191,7 @@ export default function InventoryPage() {
       </div>
 
       {/* ── CONTENT ── */}
-      <div style={{ padding: '24px 28px' }}>
+      <div className="inv-content">
         {error && (
           <div style={{ marginBottom: 20, padding: 16, background: '#fee2e2', borderRadius: 12, border: '1px solid #fecaca' }}>
             <p style={{ fontSize: 13, color: '#991b1b', margin: 0 }}>
@@ -175,7 +231,7 @@ export default function InventoryPage() {
         )}
 
         {!isLoading && filteredProducts.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+          <div className="inv-grid">
             {filteredProducts.map((product) => (
               <ProductCard
                 key={product.id}
@@ -192,18 +248,8 @@ export default function InventoryPage() {
 
       {/* ── FAB ── */}
       <button
-        className="inv-btn-primary"
+        className="inv-btn-primary inv-fab"
         onClick={() => setShowAddModal(true)}
-        style={{
-          position: 'fixed',
-          bottom: 28,
-          right: 28,
-          borderRadius: 999,
-          padding: '14px 22px',
-          fontSize: 15,
-          boxShadow: '0 8px 24px rgba(22,163,74,0.35)',
-          zIndex: 50,
-        }}
       >
         <i className="ti ti-plus" aria-hidden="true" /> Add Product
       </button>
@@ -243,4 +289,4 @@ export default function InventoryPage() {
       />
     </div>
   )
-}
+} 

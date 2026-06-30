@@ -28,7 +28,7 @@ export default function AppLayout() {
   const storeName = user?.user_metadata?.store_name || 'Aking Tindahan'
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 flex" style={{ overflowX: 'hidden', width: '100%' }}>
       <style>{`
         .sidebar-nav-link {
           display: flex;
@@ -72,6 +72,22 @@ export default function AppLayout() {
           background: #f3f4f6;
           color: #6b7280;
         }
+
+        /* ── App content wrapper: must be allowed to shrink below its
+           children's intrinsic width, otherwise wide content (tables,
+           charts) pushes this flex item — and the whole page — sideways. ── */
+        .app-content-wrapper {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 100vh;
+          min-width: 0;
+        }
+        .app-main {
+          flex: 1;
+          min-width: 0;
+          overflow-x: hidden;
+        }
       `}</style>
 
       {/* Sidebar — desktop only */}
@@ -87,6 +103,7 @@ export default function AppLayout() {
           height: '100vh',
           zIndex: 40,
           overflow: 'hidden',
+          flexShrink: 0,
         }}>
 
           {/* Logo */}
@@ -199,7 +216,7 @@ export default function AppLayout() {
       )}
 
       {/* Main content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', marginLeft: isMobile ? 0 : 220 }}>
+      <div className="app-content-wrapper" style={{ marginLeft: isMobile ? 0 : 220 }}>
 
         {/* Top header — mobile only */}
         {isMobile && (
@@ -214,7 +231,7 @@ export default function AppLayout() {
         )}
 
         {/* Page content */}
-        <main style={{ flex: 1, paddingBottom: isMobile ? 80 : 0 }}>
+        <main className="app-main" style={{ paddingBottom: isMobile ? 80 : 0 }}>
           <Outlet />
         </main>
 

@@ -120,7 +120,7 @@ export default function SalesPage() {
   const handleCloseModal = () => { setShowModal(false); setEditingSale(null) }
 
   const FilterControls = () => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+    <div className="sales-filter-controls" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
       <div style={{ display: 'inline-flex', borderRadius: 10, border: '1px solid #e5e7eb', padding: 4, background: '#f9fafb', gap: 4 }}>
         {FILTERS.map((f) => (
           <button
@@ -163,7 +163,7 @@ export default function SalesPage() {
   )
 
   return (
-    <div style={{ fontFamily: 'Inter, sans-serif', background: '#f9fafb', minHeight: '100vh', position: 'relative' }}>
+    <div style={{ fontFamily: 'Inter, sans-serif', background: '#f9fafb', minHeight: '100vh', position: 'relative', overflowX: 'hidden', width: '100%' }}>
       <style>{`
         .sales-input {
           padding: 10px 12px; border: 1.5px solid #e5e7eb; border-radius: 10px;
@@ -177,6 +177,7 @@ export default function SalesPage() {
           padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
           cursor: pointer; border: none; transition: all 0.15s ease;
           font-family: Inter, sans-serif; background: transparent; color: #6b7280;
+          white-space: nowrap;
         }
         .sales-filter-btn:hover { color: #374151; }
         .sales-row {
@@ -190,7 +191,7 @@ export default function SalesPage() {
           padding: 5px 11px; background: transparent; color: #6b7280;
           border: 1.5px solid #e5e7eb; border-radius: 8px; cursor: pointer;
           font-weight: 600; font-size: 12px; transition: all 0.15s ease;
-          font-family: Inter, sans-serif;
+          font-family: Inter, sans-serif; white-space: nowrap;
         }
         .edit-btn:hover {
           background: #f0fdf4; color: #16a34a; border-color: #bbf7d0;
@@ -214,11 +215,90 @@ export default function SalesPage() {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
+        .recharts-responsive-container { min-width: 0 !important; }
+
+        /* ── Layout containers ── */
+        .sales-header { padding: 24px 28px; }
+        .sales-body { padding: 24px 28px; min-width: 0; }
+        .sales-summary-grid {
+          display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 16px; margin-bottom: 24px; min-width: 0;
+        }
+        .sales-chart-card { padding: 20px; margin-bottom: 24px; min-width: 0; }
+        .sales-chart-head {
+          display: flex; align-items: flex-start; justify-content: space-between;
+          gap: 16px; margin-bottom: 16px; flex-wrap: wrap;
+        }
+        .sales-table-headbar {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 16px 20px; flex-wrap: wrap; gap: 10px;
+        }
+        .sales-table-card { min-width: 0; }
+        .sales-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; min-width: 0; }
+        .sales-table-scroll table { min-width: 560px; }
+
+        /* ── Tablet: ≤1024px ── */
+        @media (max-width: 1024px) {
+          .sales-header { padding: 20px; }
+          .sales-body { padding: 20px; }
+        }
+
+        /* ── Mobile: ≤640px ── */
+        @media (max-width: 640px) {
+          .sales-header { padding: 16px; }
+          .sales-header h1 { font-size: 22px !important; }
+
+          .sales-body { padding: 16px 16px 100px; }
+          .sales-summary-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+          .sales-summary-grid > div { padding: 12px 14px !important; gap: 10px !important; }
+
+          .sales-chart-card { padding: 14px; margin-bottom: 18px; }
+          .sales-chart-head { gap: 10px; }
+          .sales-chart-head h2 { font-size: 13px !important; }
+
+          /* Filter controls: stack toggle + date input, both full width */
+          .sales-filter-controls {
+            width: 100%;
+            flex-wrap: nowrap;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+          }
+          .sales-filter-controls > div:first-child {
+            width: 100%;
+            justify-content: stretch;
+          }
+          .sales-filter-controls > div:first-child .sales-filter-btn {
+            flex: 1;
+            text-align: center;
+          }
+          .sales-filter-controls .sales-input {
+            width: 100% !important;
+            box-sizing: border-box;
+          }
+
+          .sales-table-headbar { flex-direction: column; align-items: stretch; padding: 14px 16px; }
+
+          /* Recharts: trim side margins so axis labels don't get clipped on narrow screens */
+          .sales-chart-card .recharts-wrapper { font-size: 11px; }
+
+          /* Lift FAB above the fixed mobile bottom nav (~64px) + safe area */
+          .sales-fab {
+            bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+            right: 16px;
+            padding: 14px 18px;
+            font-size: 13px;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .sales-summary-grid { grid-template-columns: 1fr; }
+        }
       `}</style>
 
       {/* ── HEADER ── */}
       <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb' }}>
-        <div style={{ padding: '24px 28px' }}>
+        <div className="sales-header">
           <h1 style={{ fontSize: 28, fontWeight: 900, color: '#1a3a2a', fontFamily: 'Plus Jakarta Sans, sans-serif', margin: '0 0 4px' }}>
             Sales
           </h1>
@@ -226,7 +306,7 @@ export default function SalesPage() {
         </div>
       </div>
 
-      <div style={{ padding: '24px 28px' }}>
+      <div className="sales-body">
         {error && (
           <div style={{ marginBottom: 20, padding: 16, background: '#fee2e2', borderRadius: 12, border: '1px solid #fecaca' }}>
             <p style={{ fontSize: 13, color: '#991b1b', margin: 0 }}><strong>Error:</strong> {error}</p>
@@ -234,7 +314,7 @@ export default function SalesPage() {
         )}
 
         {/* ── SUMMARY CARDS ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <div className="sales-summary-grid">
           {[
             { label: 'Total Sales', value: `₱${formatPeso(totalAmount)}`, color: '#16a34a', icon: 'ti-trending-up', iconBg: '#dcfce7', iconColor: '#16a34a' },
             { label: 'Entries Logged', value: totalEntries.toLocaleString('en-PH'), color: '#111827', icon: 'ti-list', iconBg: '#f0f9ff', iconColor: '#0ea5e9' },
@@ -243,7 +323,7 @@ export default function SalesPage() {
             <div key={card.label} style={{
               background: '#fff', borderRadius: 14, padding: '16px 20px',
               border: '1px solid #f0f0f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-              display: 'flex', alignItems: 'center', gap: 14,
+              display: 'flex', alignItems: 'center', gap: 14, minWidth: 0,
             }}>
               <div style={{
                 width: 44, height: 44, borderRadius: 12, flexShrink: 0,
@@ -251,9 +331,13 @@ export default function SalesPage() {
               }}>
                 <i className={`ti ${card.icon}`} style={{ fontSize: 20, color: card.iconColor }} />
               </div>
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 3px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{card.label}</p>
-                <p style={{ fontSize: 22, fontWeight: 800, color: card.color, margin: '0 0 2px', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>{card.value}</p>
+                <p style={{
+                  fontSize: 22, fontWeight: 800, color: card.color, margin: '0 0 2px',
+                  fontFamily: 'Plus Jakarta Sans, sans-serif',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{card.value}</p>
                 <p style={{ fontSize: 11, color: '#9ca3af', margin: 0 }}>{periodLabel}</p>
               </div>
             </div>
@@ -262,11 +346,11 @@ export default function SalesPage() {
 
         {/* ── CHART ── */}
         {!isLoading && filteredSales.length > 0 && (
-          <div style={{
-            background: '#fff', borderRadius: 14, padding: 20, border: '1px solid #f0f0f0',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.06)', marginBottom: 24
+          <div className="sales-chart-card" style={{
+            background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
           }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
+            <div className="sales-chart-head">
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <i className="ti ti-chart-line" style={{ color: '#16a34a', fontSize: 18 }} />
                 <h2 style={{ fontSize: 14, fontWeight: 700, color: '#111827', margin: 0, fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
@@ -275,8 +359,8 @@ export default function SalesPage() {
               </div>
               <FilterControls />
             </div>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={chartData} margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={chartData} margin={{ top: 4, right: 0, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="label" stroke="#94a3b8" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <YAxis stroke="#94a3b8" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false}
@@ -320,15 +404,12 @@ export default function SalesPage() {
 
         {/* ── SALES TABLE ── */}
         {!isLoading && filteredSales.length > 0 && (
-          <div style={{
+          <div className="sales-table-card" style={{
             background: '#fff', borderRadius: 16, border: '1.5px solid #e5e7eb',
             boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden',
           }}>
             {/* Table header bar */}
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '16px 20px', borderBottom: '1.5px solid #e5e7eb',
-            }}>
+            <div className="sales-table-headbar" style={{ borderBottom: '1.5px solid #e5e7eb' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <i className="ti ti-receipt" style={{ color: '#16a34a', fontSize: 16 }} />
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#111827', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
@@ -345,79 +426,83 @@ export default function SalesPage() {
               <FilterControls />
             </div>
 
-            <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: '#f9fafb' }}>
-                  <th style={{ textAlign: 'left', padding: '10px 20px', fontWeight: 600, color: '#9ca3af', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #f0f0f0' }}>Petsa</th>
-                  <th style={{ textAlign: 'right', padding: '10px 20px', fontWeight: 600, color: '#9ca3af', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #f0f0f0' }}>Amount</th>
-                  <th style={{ textAlign: 'left', padding: '10px 20px', fontWeight: 600, color: '#9ca3af', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #f0f0f0' }}>Notes</th>
-                  <th style={{ textAlign: 'right', padding: '10px 20px', fontWeight: 600, color: '#9ca3af', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #f0f0f0' }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredSales.map((sale, idx) => (
-                  <tr
-                    key={sale.id}
-                    className="sales-row"
-                    style={{ borderBottom: idx < filteredSales.length - 1 ? '1px solid #f5f5f5' : 'none', background: '#fff' }}
-                  >
-                    <td style={{ padding: '13px 20px', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{
-                          width: 8, height: 8, borderRadius: '50%',
-                          background: '#16a34a', flexShrink: 0,
-                          boxShadow: '0 0 0 3px rgba(22,163,74,0.12)',
-                        }} />
-                        <span style={{ color: '#111827', fontWeight: 500 }}>{formatDate(sale.sale_date)}</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '13px 20px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <span style={{
-                        display: 'inline-block',
-                        background: '#f0fdf4', color: '#15803d',
-                        border: '1px solid #dcfce7',
-                        borderRadius: 8, padding: '3px 10px',
-                        fontWeight: 700, fontSize: 13,
-                        fontFamily: 'Plus Jakarta Sans, sans-serif',
-                      }}>
-                        ₱{formatPeso(sale.amount)}
-                      </span>
-                    </td>
-                    <td style={{ padding: '13px 20px', color: '#6b7280', maxWidth: 260 }}>
-                      {sale.notes
-                        ? <span style={{ color: '#374151' }}>{sale.notes}</span>
-                        : <span style={{ color: '#d1d5db', fontStyle: 'italic' }}>Walang notes</span>
-                      }
+            {/* Scrollable on narrow viewports so columns never get crushed */}
+            <div className="sales-table-scroll">
+              <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#f9fafb' }}>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontWeight: 600, color: '#9ca3af', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #f0f0f0' }}>Petsa</th>
+                    <th style={{ textAlign: 'right', padding: '10px 20px', fontWeight: 600, color: '#9ca3af', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #f0f0f0' }}>Amount</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontWeight: 600, color: '#9ca3af', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #f0f0f0' }}>Notes</th>
+                    <th style={{ textAlign: 'right', padding: '10px 20px', fontWeight: 600, color: '#9ca3af', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #f0f0f0' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredSales.map((sale, idx) => (
+                    <tr
+                      key={sale.id}
+                      className="sales-row"
+                      style={{ borderBottom: idx < filteredSales.length - 1 ? '1px solid #f5f5f5' : 'none', background: '#fff' }}
+                    >
+                      <td style={{ padding: '13px 20px', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{
+                            width: 8, height: 8, borderRadius: '50%',
+                            background: '#16a34a', flexShrink: 0,
+                            boxShadow: '0 0 0 3px rgba(22,163,74,0.12)',
+                          }} />
+                          <span style={{ color: '#111827', fontWeight: 500 }}>{formatDate(sale.sale_date)}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '13px 20px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          background: '#f0fdf4', color: '#15803d',
+                          border: '1px solid #dcfce7',
+                          borderRadius: 8, padding: '3px 10px',
+                          fontWeight: 700, fontSize: 13,
+                          fontFamily: 'Plus Jakarta Sans, sans-serif',
+                        }}>
+                          ₱{formatPeso(sale.amount)}
+                        </span>
+                      </td>
+                      <td style={{ padding: '13px 20px', color: '#6b7280', maxWidth: 260 }}>
+                        {sale.notes
+                          ? <span style={{ color: '#374151' }}>{sale.notes}</span>
+                          : <span style={{ color: '#d1d5db', fontStyle: 'italic' }}>Walang notes</span>
+                        }
+                      </td>
+                      <td style={{ padding: '13px 20px', textAlign: 'right' }}>
+                        <button className="edit-btn" onClick={() => handleEditSale(sale)}>
+                          <i className="ti ti-edit" style={{ fontSize: 13 }} />
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr style={{ background: '#f9fafb', borderTop: '1.5px solid #e5e7eb' }}>
+                    <td style={{ padding: '13px 20px', fontWeight: 700, color: '#374151', fontSize: 13, whiteSpace: 'nowrap' }}>
+                      Total — {totalEntries} entry{totalEntries !== 1 ? 's' : ''}
                     </td>
                     <td style={{ padding: '13px 20px', textAlign: 'right' }}>
-                      <button className="edit-btn" onClick={() => handleEditSale(sale)}>
-                        <i className="ti ti-edit" style={{ fontSize: 13 }} />
-                        Edit
-                      </button>
+                      <span style={{
+                        display: 'inline-block',
+                        background: '#16a34a', color: '#fff',
+                        borderRadius: 8, padding: '4px 12px',
+                        fontWeight: 800, fontSize: 14,
+                        fontFamily: 'Plus Jakarta Sans, sans-serif',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        ₱{formatPeso(totalAmount)}
+                      </span>
                     </td>
+                    <td colSpan={2} />
                   </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr style={{ background: '#f9fafb', borderTop: '1.5px solid #e5e7eb' }}>
-                  <td style={{ padding: '13px 20px', fontWeight: 700, color: '#374151', fontSize: 13 }}>
-                    Total — {totalEntries} entry{totalEntries !== 1 ? 's' : ''}
-                  </td>
-                  <td style={{ padding: '13px 20px', textAlign: 'right' }}>
-                    <span style={{
-                      display: 'inline-block',
-                      background: '#16a34a', color: '#fff',
-                      borderRadius: 8, padding: '4px 12px',
-                      fontWeight: 800, fontSize: 14,
-                      fontFamily: 'Plus Jakarta Sans, sans-serif',
-                    }}>
-                      ₱{formatPeso(totalAmount)}
-                    </span>
-                  </td>
-                  <td colSpan={2} />
-                </tr>
-              </tfoot>
-            </table>
+                </tfoot>
+              </table>
+            </div>
           </div>
         )}
       </div>
