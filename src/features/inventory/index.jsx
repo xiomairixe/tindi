@@ -2,22 +2,15 @@ import { useEffect, useState } from 'react'
 import { useAuthStore } from '../../stores/authStore'
 import { useInventoryStore } from '../../stores/inventoryStore'
 import { useSuppliersStore } from '../../stores/suppliersStore'
+import { supabase } from '../../lib/supabase'
 import ProductCard from './components/ProductCard'
 import AddProductModal from './components/AddProductModal'
 import EditProductModal from './components/EditProductModal'
 import DeleteConfirmModal from './components/DeleteConfirmModal'
 import SuppliersModal from './suppliers/SupplierModal'
 
-// Max products allowed per plan tier. -1 = unlimited.
-// TODO: adjust these to match your actual pricing/plan rules.
-const PLAN_LIMITS = {
-  basic: 30,
-  advanced: 100,
-  pro: -1,
-}
-
 export default function InventoryPage() {
-  const { user, storeId, isLoading: authLoading } = useAuthStore()
+  const { user, storeId, store, isLoading: authLoading } = useAuthStore()
   const { products, isLoading, error, fetchProducts, deleteProduct } = useInventoryStore()
   const { suppliers, fetchSuppliers } = useSuppliersStore()
   const [showAddModal, setShowAddModal] = useState(false)
@@ -31,8 +24,51 @@ export default function InventoryPage() {
   const isAdvanced = ['advanced', 'pro'].includes(userPlan)
   // Stock/Reorder Level tracking ay Pro-only feature.
   const isPro = userPlan === 'pro'
-  // Product count limit base sa plan tier ng user.
-  const maxProducts = PLAN_LIMITS[userPlan] ?? PLAN_LIMITS.basic
+
+  // ── Plan-based product limit (display / UI-hint only) ────────────
+  // Ang authoritative na check ay nasa AddProductModal mismo (checked sa
+  // submit time gamit ang store_usage + plans.limits, parehong pattern gaya
+  // ng sa AddSaleModal). Dito, kinukuha lang natin ang max_products para sa
+  // header display at para ma-disable agad ang Add Product button bago pa
+  // man bumukas ang modal — pero hindi ito ang nagpapatunay ng limit.
+  const [maxProducts, setMaxProducts] = useState(null) // null = unknown/loading, -1 = unlimited
+  const [planLoading, setPlanLoading] = useState(true)
+
+  useEffect(() => {
+    if (authLoading) return
+
+    if (!store?.plan_id) {
+      setMaxProducts(0)
+      setPlanLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setPlanLoading(true)
+    supabase
+      .from('plans')
+      .select('limits')
+      .eq('id', store.plan_id)
+      .single()
+      .then(({ data, error: planErr }) => {
+        if (cancelled) return
+        if (planErr) {
+          console.error('Failed to fetch plan limits:', planErr)
+          setMaxProducts(null)
+        } else {
+          setMaxProducts(data?.limits?.max_products ?? null)
+        }
+        setPlanLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [store?.plan_id, authLoading])
+
+  const isUnlimitedProducts = maxProducts === -1
+  // Habang naglo-load pa ang plan info, huwag munang i-lock (avoid flash of
+  // locked state).
+  const isAtProductLimit =
+    !authLoading && !planLoading && !isUnlimitedProducts && maxProducts != null && products.length >= maxProducts
 
   useEffect(() => {
     if (authLoading) return
@@ -52,12 +88,12 @@ export default function InventoryPage() {
 
   const categories = [...new Set(products.map((p) => p.category).filter(Boolean))]
 
-  const isAtProductLimit = maxProducts !== -1 && products.length >= maxProducts
-
   const handleEditProduct = (product) => setEditingProduct(product)
   const handleDeleteProduct = (product) => setDeletingProduct(product)
 
   const handleOpenAddModal = () => {
+    // Soft pre-check lang para sa UX (agad na naka-disable ang button).
+    // Ang totoong enforcement ay nasa AddProductModal sa submit time.
     if (isAtProductLimit) return
     setShowAddModal(true)
   }
@@ -180,7 +216,7 @@ export default function InventoryPage() {
               </h1>
               <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>
                 {products.length}
-                {maxProducts !== -1 ? `/${maxProducts}` : ''} produkto • Tier:{' '}
+                {!planLoading && !isUnlimitedProducts && maxProducts != null ? `/${maxProducts}` : ''} produkto • Tier:{' '}
                 <span style={{ fontWeight: 600, color: '#374151' }}>{userPlan.toUpperCase()}</span>
               </p>
             </div>
@@ -310,8 +346,6 @@ export default function InventoryPage() {
         isPro={isPro}
         suppliers={suppliers}
         storeId={storeId}
-        currentProductCount={products.length}
-        maxProducts={maxProducts}
       />
 
       {editingProduct && (

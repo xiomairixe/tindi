@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useInventoryStore } from '../../../stores/inventoryStore'
 import { useSuppliersStore } from '../../../stores/suppliersStore'
 import { uploadImageToCloudinary } from '../../../lib/cloudinary'
+import { supabase } from '../../../lib/supabase'
 import Modal from './Modal'
 
 const CATEGORIES = [
@@ -42,22 +44,51 @@ const PriceRow = ({ label, value }) => (
   </div>
 )
 
-export default function AddProductModal({ 
-  isOpen, 
-  onClose, 
-  isAdvanced, 
+// ── Plan limit check ──────────────────────────────────────────────
+// Parehong pattern gaya ng sa AddSaleModal: kinukuha ang `used_products`
+// mula sa `store_usage` view (live count) at ang `max_products` mula sa
+// `plans.limits` jsonb base sa plan_id ng store.
+// -1 (o null) sa max_products = unlimited.
+async function fetchProductLimitStatus(storeId) {
+  const { data: usage, error: usageErr } = await supabase
+    .from('store_usage')
+    .select('used_products, plan_id')
+    .eq('store_id', storeId)
+    .single()
+
+  if (usageErr) throw usageErr
+
+  if (!usage?.plan_id) {
+    // Walang plan = treat as 0 limit (locked), pero ang page-level lock na
+    // dapat sumalo dito. Failsafe lang ito.
+    return { usedProducts: usage?.used_products ?? 0, maxProducts: 0, isUnlimited: false }
+  }
+
+  const { data: plan, error: planErr } = await supabase
+    .from('plans')
+    .select('limits')
+    .eq('id', usage.plan_id)
+    .single()
+
+  if (planErr) throw planErr
+
+  const maxProducts = plan?.limits?.max_products
+  const isUnlimited = maxProducts === -1 || maxProducts == null
+
+  return { usedProducts: usage.used_products ?? 0, maxProducts, isUnlimited }
+}
+
+export default function AddProductModal({
+  isOpen,
+  onClose,
+  isAdvanced,
   isPro = false,
-  suppliers, 
+  suppliers,
   storeId,
-  currentProductCount = 0,
-  maxProducts = null
 }) {
+  const navigate = useNavigate()
   const { addProduct } = useInventoryStore()
   const fileInputRef = useRef(null)
-
-  // Check if at product limit
-  const isAtLimit = maxProducts !== null && maxProducts !== -1 && currentProductCount >= maxProducts
-  const canAddProduct = !isAtLimit
 
   const [formData, setFormData] = useState({
     name: '',
@@ -77,6 +108,10 @@ export default function AddProductModal({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
 
+  // Limit-check state — checked on submit (per request), not on open,
+  // dahil baka magbago ang usage habang bukas ang modal.
+  const [limitError, setLimitError] = useState(null) // { usedProducts, maxProducts } kapag naabot na
+
   const isMultiPiece = MULTI_PIECE_UNITS.includes(formData.unit_bought)
 
   const sellingPrice = formData.cost_price
@@ -90,6 +125,31 @@ export default function AddProductModal({
   const sellingPricePerPiece = hasValidPiecesPerUnit
     ? roundSellingPrice(parseFloat(sellingPrice) / piecesPerUnitNum).toFixed(2)
     : null
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      category: 'Grocery & Staples',
+      unit_bought: 'pcs',
+      cost_price: '',
+      markup_percentage: '20',
+      pieces_per_unit: '',
+      quantity: '',
+      reorder_level: '',
+      expiry_date: '',
+      supplier_id: '',
+      image_url: '',
+    })
+    setImagePreview(null)
+    setImageFile(null)
+    setError(null)
+    setLimitError(null)
+  }
+
+  const handleClose = () => {
+    resetForm()
+    onClose()
+  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -126,12 +186,7 @@ export default function AddProductModal({
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
-    
-    if (isAtLimit) {
-      setError(`Umabot na sa limit ng ${maxProducts} produkto. I-upgrade ang plan para mag-add pa.`)
-      return
-    }
-
+    setLimitError(null)
     setIsLoading(true)
 
     try {
@@ -142,6 +197,16 @@ export default function AddProductModal({
       if (!storeId) throw new Error('Store ID is missing')
       if (isMultiPiece && formData.pieces_per_unit && parseFloat(formData.pieces_per_unit) <= 0) {
         throw new Error('Pieces per unit must be greater than 0')
+      }
+
+      // Check plan limit bago mag-proceed (parehong pattern gaya ng sa
+      // AddSaleModal). Ginagawa ito sa submit, hindi sa open, dahil baka
+      // magbago ang usage habang bukas ang modal.
+      const { usedProducts, maxProducts, isUnlimited } = await fetchProductLimitStatus(storeId)
+      if (!isUnlimited && usedProducts >= maxProducts) {
+        setLimitError({ usedProducts, maxProducts })
+        setIsLoading(false)
+        return
       }
 
       let imageUrl = formData.image_url
@@ -184,21 +249,7 @@ export default function AddProductModal({
 
       await addProduct(storeId, productData)
 
-      setFormData({
-        name: '',
-        category: 'Grocery & Staples',
-        unit_bought: 'pcs',
-        cost_price: '',
-        markup_percentage: '20',
-        pieces_per_unit: '',
-        quantity: '',
-        reorder_level: '',
-        expiry_date: '',
-        supplier_id: '',
-        image_url: '',
-      })
-      setImagePreview(null)
-      setImageFile(null)
+      resetForm()
       onClose()
     } catch (err) {
       setError(err.message)
@@ -208,7 +259,7 @@ export default function AddProductModal({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Magdagdag ng Produkto" size="lg">
+    <Modal isOpen={isOpen} onClose={handleClose} title="Magdagdag ng Produkto" size="lg">
       <style>{`
         .add-product-input {
           width: 100%; padding: 10px 12px; border: 1.5px solid #e5e7eb;
@@ -226,30 +277,62 @@ export default function AddProductModal({
         .add-product-select:focus {
           outline: none; border-color: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,0.1);
         }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
       `}</style>
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {/* Limit warning banner */}
-        {isAtLimit && (
+      {/* ── LIMIT REACHED STATE ── */}
+      {limitError ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '8px 0', textAlign: 'center' }}>
           <div style={{
-            padding: '14px 16px', background: '#fee2e2', borderRadius: 12, 
-            border: '1.5px solid #fecaca', display: 'flex', gap: 10, alignItems: 'flex-start'
+            width: 56, height: 56, borderRadius: 14, background: '#fef3c7',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <i className="ti ti-alert-triangle" style={{ fontSize: 18, color: '#dc2626', flexShrink: 0, marginTop: 2 }} />
-            <div>
-              <p style={{ fontSize: 13, color: '#991b1b', margin: 0, fontWeight: 600 }}>
-                Umabot na sa product limit
-              </p>
-              <p style={{ fontSize: 12, color: '#a16207', margin: '4px 0 0', lineHeight: 1.5 }}>
-                {maxProducts === -1 
-                  ? 'Unlimited products sa plan mo.' 
-                  : `Nakadagdag na ka ng ${currentProductCount}/${maxProducts} produkto. I-upgrade ang plan para mag-add pa.`}
-              </p>
-            </div>
+            <i className="ti ti-lock" style={{ color: '#d97706', fontSize: 24 }} />
           </div>
-        )}
-
-        {error && !isAtLimit && (
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: '#111827', margin: '0 0 8px', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+              Naabot na ang Limit ng Plan
+            </h3>
+            <p style={{ fontSize: 13, color: '#6b7280', margin: 0, lineHeight: 1.6 }}>
+              May naka-record ka nang <strong style={{ color: '#374151' }}>{limitError.usedProducts}</strong> sa{' '}
+              <strong style={{ color: '#374151' }}>{limitError.maxProducts}</strong> na pinapayagang produkto
+              ng iyong kasalukuyang plan. I-upgrade ang plan mo para makapagdagdag pa.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+            <button
+              type="button"
+              onClick={handleClose}
+              style={{
+                flex: 1, padding: '10px 16px', border: '1.5px solid #e5e7eb', borderRadius: 10,
+                background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              Isara
+            </button>
+            <button
+              type="button"
+              onClick={() => { handleClose(); navigate('/profile') }}
+              style={{
+                flex: 1.4, padding: '10px 16px', borderRadius: 10, background: '#16a34a',
+                color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', border: 'none',
+                fontFamily: 'Inter, sans-serif',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                boxShadow: '0 4px 12px rgba(22,163,74,0.25)',
+              }}
+            >
+              <i className="ti ti-arrow-up-circle" style={{ fontSize: 14 }} />
+              I-upgrade ang Plan
+            </button>
+          </div>
+        </div>
+      ) : (
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {error && (
           <div style={{ padding: 14, background: '#fee2e2', borderRadius: 10, border: '1px solid #fecaca' }}>
             <p style={{ fontSize: 13, color: '#991b1b', margin: 0 }}>{error}</p>
           </div>
@@ -312,7 +395,6 @@ export default function AddProductModal({
             onChange={handleInputChange}
             placeholder="e.g., Lucky Me Pancit Canton"
             className="add-product-input"
-            disabled={isAtLimit}
           />
         </div>
 
@@ -327,7 +409,6 @@ export default function AddProductModal({
               value={formData.category}
               onChange={handleInputChange}
               className="add-product-select"
-              disabled={isAtLimit}
             >
               {CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>{cat}</option>
@@ -344,7 +425,6 @@ export default function AddProductModal({
               value={formData.unit_bought}
               onChange={handleUnitChange}
               className="add-product-select"
-              disabled={isAtLimit}
             >
               {UNITS.map((unit) => (
                 <option key={unit} value={unit}>{unit}</option>
@@ -368,7 +448,6 @@ export default function AddProductModal({
               step="1"
               min="1"
               className="add-product-input"
-              disabled={isAtLimit}
             />
             <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 6, margin: 0 }}>
               Ilang piraso bawat {formData.unit_bought}? (e.g., 1 box = 24 pcs)
@@ -391,7 +470,6 @@ export default function AddProductModal({
               step="0.01"
               min="0"
               className="add-product-input"
-              disabled={isAtLimit}
             />
           </div>
 
@@ -408,7 +486,6 @@ export default function AddProductModal({
               step="1"
               min="0"
               className="add-product-input"
-              disabled={isAtLimit}
             />
           </div>
         </div>
@@ -477,7 +554,6 @@ export default function AddProductModal({
                 placeholder="0"
                 min="0"
                 className="add-product-input"
-                disabled={isAtLimit}
               />
             </div>
 
@@ -493,7 +569,6 @@ export default function AddProductModal({
                 placeholder="10"
                 min="0"
                 className="add-product-input"
-                disabled={isAtLimit}
               />
             </div>
           </div>
@@ -519,7 +594,6 @@ export default function AddProductModal({
             value={formData.supplier_id}
             onChange={handleInputChange}
             className="add-product-select"
-            disabled={isAtLimit}
           >
             <option value="">None</option>
             {suppliers?.map((supplier) => (
@@ -540,7 +614,6 @@ export default function AddProductModal({
               value={formData.expiry_date}
               onChange={handleInputChange}
               className="add-product-input"
-              disabled={isAtLimit}
             />
           </div>
         )}
@@ -549,7 +622,7 @@ export default function AddProductModal({
         <div style={{ display: 'flex', gap: 12, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             style={{
               flex: 1, padding: '10px 16px', border: '1.5px solid #e5e7eb', borderRadius: 10,
               background: '#fff', color: '#374151', fontSize: 14, fontWeight: 600,
@@ -562,23 +635,17 @@ export default function AddProductModal({
           </button>
           <button
             type="submit"
-            disabled={isLoading || isAtLimit}
+            disabled={isLoading}
             style={{
-              flex: 1, padding: '10px 16px', borderRadius: 10, 
-              background: isLoading || isAtLimit ? '#d1d5db' : '#16a34a',
-              color: '#fff', fontSize: 14, fontWeight: 600, 
-              cursor: isLoading || isAtLimit ? 'not-allowed' : 'pointer',
+              flex: 1, padding: '10px 16px', borderRadius: 10,
+              background: isLoading ? '#d1d5db' : '#16a34a',
+              color: '#fff', fontSize: 14, fontWeight: 600,
+              cursor: isLoading ? 'not-allowed' : 'pointer',
               border: 'none', transition: 'all 0.15s ease', fontFamily: 'Inter, sans-serif',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              opacity: isAtLimit ? 0.6 : 1
             }}
           >
-            {isAtLimit ? (
-              <>
-                <i className="ti ti-lock" />
-                Umabot na sa limit
-              </>
-            ) : isLoading ? (
+            {isLoading ? (
               <>
                 <i className="ti ti-loader-3" style={{ animation: 'spin 1s linear infinite' }} />
                 Nag-add...
@@ -592,13 +659,7 @@ export default function AddProductModal({
           </button>
         </div>
       </form>
-
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+      )}
     </Modal>
   )
 }
