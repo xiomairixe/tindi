@@ -1,7 +1,9 @@
 import { useEffect, useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useAuthStore } from '../../stores/authStore'
 import { useSalesStore } from '../../stores/salesStore'
+import { supabase } from '../../lib/supabase'
 import AddSaleModal from './components/AddSaleModal'
 
 const FILTERS = [
@@ -39,14 +41,154 @@ const CustomTooltip = ({ active, payload }) => {
   return null
 }
 
+// ─── Export Lock Modal (Free plan / walang plan) ──────────────────────────
+function ExportLockModal({ onClose }) {
+  const navigate = useNavigate()
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)',
+          zIndex: 200,
+        }}
+      />
+      <div style={{
+        position: 'fixed', top: '50%', left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: 201, width: '100%', maxWidth: 360,
+        background: '#fff', borderRadius: 20, padding: '32px 28px',
+        textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.18)',
+        border: '1px solid #f0f0f0', fontFamily: 'Inter, sans-serif',
+      }}>
+        <div style={{
+          width: 56, height: 56, borderRadius: 14, background: '#fef3c7',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 16px',
+        }}>
+          <i className="ti ti-lock" style={{ color: '#d97706', fontSize: 24 }} />
+        </div>
+        <h3 style={{
+          fontSize: 16, fontWeight: 800, color: '#111827', margin: '0 0 8px',
+          fontFamily: 'Plus Jakarta Sans, sans-serif',
+        }}>
+          Hindi Kasama sa Free Plan
+        </h3>
+        <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 20px', lineHeight: 1.6 }}>
+          Ang Export Report ay available simula sa Basic Plan pataas.
+          I-upgrade ang plan mo para magamit ang feature na ito.
+        </p>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={onClose}
+            style={{
+              flex: 1, padding: '11px 0', background: '#f3f4f6', color: '#6b7280',
+              border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            Isara
+          </button>
+          <button
+            onClick={() => navigate('/profile')}
+            style={{
+              flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              padding: '11px 0', background: '#16a34a', color: '#fff', border: 'none',
+              borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif', boxShadow: '0 4px 12px rgba(22,163,74,0.25)',
+            }}
+          >
+            <i className="ti ti-arrow-up-circle" style={{ fontSize: 14 }} />
+            I-upgrade
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ─── CSV export helper ──────────────────────────────────────────────────────
+function exportSalesToCsv(sales, periodLabel) {
+  const escapeCsv = (val) => {
+    const str = String(val ?? '')
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`
+    }
+    return str
+  }
+
+  const headers = ['Petsa', 'Amount', 'Notes']
+  const rows = sales.map((s) => [
+    formatDate(s.sale_date),
+    parseFloat(s.amount || 0).toFixed(2),
+    s.notes || '',
+  ])
+
+  const csvContent = [headers, ...rows]
+    .map((row) => row.map(escapeCsv).join(','))
+    .join('\n')
+
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', `sales-report-${periodLabel.replace(/\s+/g, '-')}.csv`)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
 export default function SalesPage() {
-  const { storeId, isLoading: authLoading } = useAuthStore()
+  const { storeId, store, isLoading: authLoading } = useAuthStore()
   const { sales, isLoading, error, fetchSales } = useSalesStore()
 
   const [showModal, setShowModal] = useState(false)
   const [editingSale, setEditingSale] = useState(null)
   const [filterType, setFilterType] = useState('monthly')
   const [selectedDate, setSelectedDate] = useState(todayStr())
+  const [showExportLock, setShowExportLock] = useState(false)
+
+  // ── Plan-based access check ──────────────────────────────────────
+  // Export Report ay locked sa: No Plan (walang plan_id) AT Free Plan (price = 0).
+  // Available simula Basic Plan pataas. Parehong pattern gaya ng sa UtangPage.
+  const [planPrice, setPlanPrice] = useState(null)
+  const [planLoading, setPlanLoading] = useState(true)
+
+  useEffect(() => {
+    if (authLoading) return
+
+    if (!store?.plan_id) {
+      setPlanPrice(null)
+      setPlanLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setPlanLoading(true)
+    supabase
+      .from('plans')
+      .select('price')
+      .eq('id', store.plan_id)
+      .single()
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) {
+          console.error('Failed to fetch plan price:', error)
+          setPlanPrice(null)
+        } else {
+          setPlanPrice(Number(data?.price ?? 0))
+        }
+        setPlanLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [store?.plan_id, authLoading])
+
+  // Locked kapag walang plan, o Free plan (price === 0). Habang naglo-load
+  // pa ang plan price, huwag munang i-lock (avoid flash of locked state).
+  const hasNoExportAccess = !authLoading && !planLoading && (!store?.plan_id || planPrice === 0)
 
   useEffect(() => {
     if (authLoading) return
@@ -118,6 +260,14 @@ export default function SalesPage() {
   const handleAddSale = () => { setEditingSale(null); setShowModal(true) }
   const handleEditSale = (sale) => { setEditingSale(sale); setShowModal(true) }
   const handleCloseModal = () => { setShowModal(false); setEditingSale(null) }
+
+  const handleExportReport = () => {
+    if (hasNoExportAccess) {
+      setShowExportLock(true)
+      return
+    }
+    exportSalesToCsv(filteredSales, periodLabel)
+  }
 
   const FilterControls = () => (
     <div className="sales-filter-controls" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -219,6 +369,10 @@ export default function SalesPage() {
 
         /* ── Layout containers ── */
         .sales-header { padding: 24px 28px; }
+        .sales-header-inner {
+          display: flex; align-items: flex-start; justify-content: space-between;
+          gap: 16px; flex-wrap: wrap;
+        }
         .sales-body { padding: 24px 28px; min-width: 0; }
         .sales-summary-grid {
           display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -237,6 +391,19 @@ export default function SalesPage() {
         .sales-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; min-width: 0; }
         .sales-table-scroll table { min-width: 560px; }
 
+        .sales-export-btn {
+          display: inline-flex; align-items: center; gap: 8px;
+          padding: 10px 16px; border-radius: 10px; font-size: 13px;
+          font-weight: 700; cursor: pointer; border: 1.5px solid #16a34a;
+          background: #fff; color: #16a34a; transition: all 0.15s ease;
+          font-family: Inter, sans-serif; white-space: nowrap; flex-shrink: 0;
+        }
+        .sales-export-btn:hover { background: #f0fdf4; }
+        .sales-export-btn.locked {
+          border-color: #e5e7eb; color: #9ca3af; background: #f9fafb;
+        }
+        .sales-export-btn.locked:hover { background: #f3f4f6; }
+
         /* ── Tablet: ≤1024px ── */
         @media (max-width: 1024px) {
           .sales-header { padding: 20px; }
@@ -247,6 +414,8 @@ export default function SalesPage() {
         @media (max-width: 640px) {
           .sales-header { padding: 16px; }
           .sales-header h1 { font-size: 22px !important; }
+          .sales-header-inner { flex-direction: column; align-items: stretch; }
+          .sales-export-btn { width: 100%; justify-content: center; }
 
           .sales-body { padding: 16px 16px 100px; }
           .sales-summary-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
@@ -299,10 +468,23 @@ export default function SalesPage() {
       {/* ── HEADER ── */}
       <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb' }}>
         <div className="sales-header">
-          <h1 style={{ fontSize: 28, fontWeight: 900, color: '#1a3a2a', fontFamily: 'Plus Jakarta Sans, sans-serif', margin: '0 0 4px' }}>
-            Sales
-          </h1>
-          <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>Subaybayan ang iyong benta araw-araw</p>
+          <div className="sales-header-inner">
+            <div>
+              <h1 style={{ fontSize: 28, fontWeight: 900, color: '#1a3a2a', fontFamily: 'Plus Jakarta Sans, sans-serif', margin: '0 0 4px' }}>
+                Sales
+              </h1>
+              <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>Subaybayan ang iyong benta araw-araw</p>
+            </div>
+
+            <button
+              onClick={handleExportReport}
+              className={`sales-export-btn${hasNoExportAccess ? ' locked' : ''}`}
+              title={hasNoExportAccess ? 'Available simula sa Basic Plan pataas' : 'I-download ang report bilang CSV'}
+            >
+              <i className={`ti ${hasNoExportAccess ? 'ti-lock' : 'ti-download'}`} />
+              Export Report
+            </button>
+          </div>
         </div>
       </div>
 
@@ -518,6 +700,10 @@ export default function SalesPage() {
         storeId={storeId}
         editingSale={editingSale}
       />
+
+      {showExportLock && (
+        <ExportLockModal onClose={() => setShowExportLock(false)} />
+      )}
     </div>
   )
 }

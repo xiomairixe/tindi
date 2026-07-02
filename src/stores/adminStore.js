@@ -80,6 +80,41 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
+  // ─── Approve a user ──────────────────────────────────────────────────────
+  approveUser: async (userId) => {
+    set({ error: null })
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+
+      const { error } = await supabase
+        .from('user_status')
+        .upsert({
+          user_id: userId,
+          status: 'approved',
+          reason: null,
+          approved_at: new Date().toISOString(),
+          approved_by: user.id,
+        }, { onConflict: 'user_id' })
+
+      if (error) throw error
+
+      set(state => ({
+        userStatuses: {
+          ...state.userStatuses,
+          [userId]: {
+            ...state.userStatuses[userId],
+            status: 'approved',
+            reason: null,
+            approved_at: new Date().toISOString(),
+          }
+        }
+      }))
+    } catch (error) {
+      set({ error: error.message })
+      console.error('Error approving user:', error)
+    }
+  },
+
   // ─── Suspend a user ──────────────────────────────────────────────────────
   suspendUser: async (userId, reason = '') => {
     set({ error: null })

@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   LineChart,
   Line,
@@ -11,6 +12,7 @@ import {
 } from 'recharts'
 import { useAuthStore } from '../../stores/authStore'
 import { useExpensesStore } from '../../stores/expensesStore'
+import { supabase } from '../../lib/supabase'
 import AddExpenseModal from './components/AddExpenseModal'
 
 const FILTERS = [
@@ -87,8 +89,75 @@ const ChartTooltip = ({ active, payload, label }) => {
   )
 }
 
+// ─── Export Lock Modal (Free plan / walang plan) ──────────────────────────
+function ExportLockModal({ onClose }) {
+  const navigate = useNavigate()
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)',
+          zIndex: 200,
+        }}
+      />
+      <div style={{
+        position: 'fixed', top: '50%', left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: 201, width: '100%', maxWidth: 360,
+        background: '#fff', borderRadius: 20, padding: '32px 28px',
+        textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.18)',
+        border: '1px solid #f0f0f0', fontFamily: 'Inter, sans-serif',
+      }}>
+        <div style={{
+          width: 56, height: 56, borderRadius: 14, background: '#fef3c7',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 16px',
+        }}>
+          <i className="ti ti-lock" style={{ color: '#d97706', fontSize: 24 }} />
+        </div>
+        <h3 style={{
+          fontSize: 16, fontWeight: 800, color: '#111827', margin: '0 0 8px',
+          fontFamily: 'Plus Jakarta Sans, sans-serif',
+        }}>
+          Hindi Kasama sa Free Plan
+        </h3>
+        <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 20px', lineHeight: 1.6 }}>
+          Ang Export Report ay available simula sa Basic Plan pataas.
+          I-upgrade ang plan mo para magamit ang feature na ito.
+        </p>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={onClose}
+            style={{
+              flex: 1, padding: '11px 0', background: '#f3f4f6', color: '#6b7280',
+              border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            Isara
+          </button>
+          <button
+            onClick={() => navigate('/profile')}
+            style={{
+              flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              padding: '11px 0', background: '#16a34a', color: '#fff', border: 'none',
+              borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif', boxShadow: '0 4px 12px rgba(22,163,74,0.25)',
+            }}
+          >
+            <i className="ti ti-arrow-up-circle" style={{ fontSize: 14 }} />
+            I-upgrade
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
+
 export default function ExpensesPage() {
-  const { storeId, isLoading: authLoading } = useAuthStore()
+  const { storeId, store, isLoading: authLoading } = useAuthStore()
   const { expenses, isLoading, error, fetchExpenses, fetchCustomCategories } = useExpensesStore()
 
   const [showModal, setShowModal] = useState(false)
@@ -96,6 +165,48 @@ export default function ExpensesPage() {
   const [filterType, setFilterType] = useState('monthly')
   const [selectedDate, setSelectedDate] = useState(todayStr())
   const [categoryFilter, setCategoryFilter] = useState('All')
+  const [showExportLock, setShowExportLock] = useState(false)
+
+  // ── Plan-based access check ──────────────────────────────────────
+  // Export Report ay locked sa: No Plan (walang plan_id) AT Free Plan (price = 0).
+  // Available simula Basic Plan pataas. Parehong pattern gaya ng sa
+  // UtangPage/SalesPage.
+  const [planPrice, setPlanPrice] = useState(null)
+  const [planLoading, setPlanLoading] = useState(true)
+
+  useEffect(() => {
+    if (authLoading) return
+
+    if (!store?.plan_id) {
+      setPlanPrice(null)
+      setPlanLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setPlanLoading(true)
+    supabase
+      .from('plans')
+      .select('price')
+      .eq('id', store.plan_id)
+      .single()
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) {
+          console.error('Failed to fetch plan price:', error)
+          setPlanPrice(null)
+        } else {
+          setPlanPrice(Number(data?.price ?? 0))
+        }
+        setPlanLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [store?.plan_id, authLoading])
+
+  // Locked kapag walang plan, o Free plan (price === 0). Habang naglo-load
+  // pa ang plan price, huwag munang i-lock (avoid flash of locked state).
+  const hasNoExportAccess = !authLoading && !planLoading && (!store?.plan_id || planPrice === 0)
 
   useEffect(() => {
     if (authLoading) return
@@ -193,7 +304,14 @@ export default function ExpensesPage() {
   const handleAddExpense = () => { setEditingExpense(null); setShowModal(true) }
   const handleEditExpense = (expense) => { setEditingExpense(expense); setShowModal(true) }
   const handleCloseModal = () => { setShowModal(false); setEditingExpense(null) }
-  const handleExport = () => exportToCSV(filteredExpenses, periodLabel)
+
+  const handleExport = () => {
+    if (hasNoExportAccess) {
+      setShowExportLock(true)
+      return
+    }
+    exportToCSV(filteredExpenses, periodLabel)
+  }
 
   return (
     <div style={{ fontFamily: 'Inter, sans-serif', background: '#f9fafb', minHeight: '100vh', overflowX: 'hidden', width: '100%' }}>
@@ -214,6 +332,10 @@ export default function ExpensesPage() {
           font-family: Inter, sans-serif; white-space: nowrap;
         }
         .expense-btn-secondary:hover { background: #f9fafb; border-color: #d1d5db; }
+        .expense-btn-secondary.locked {
+          border-color: #e5e7eb; color: #9ca3af; background: #f9fafb;
+        }
+        .expense-btn-secondary.locked:hover { background: #f3f4f6; border-color: #e5e7eb; }
         .expense-filter-btn {
           padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
           cursor: pointer; border: none; transition: all 0.15s ease;
@@ -313,8 +435,13 @@ export default function ExpensesPage() {
               <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>Subaybayan ang iyong gastos sa bawat kategorya</p>
             </div>
             {filteredExpenses.length > 0 && (
-              <button className="expense-btn-secondary" onClick={handleExport}>
-                <i className="ti ti-download" aria-hidden="true" /> Export CSV
+              <button
+                className={`expense-btn-secondary${hasNoExportAccess ? ' locked' : ''}`}
+                onClick={handleExport}
+                title={hasNoExportAccess ? 'Available simula sa Basic Plan pataas' : 'I-download ang report bilang CSV'}
+              >
+                <i className={`ti ${hasNoExportAccess ? 'ti-lock' : 'ti-download'}`} aria-hidden="true" />
+                Export CSV
               </button>
             )}
           </div>
@@ -643,6 +770,10 @@ export default function ExpensesPage() {
         storeId={storeId}
         editingExpense={editingExpense}
       />
+
+      {showExportLock && (
+        <ExportLockModal onClose={() => setShowExportLock(false)} />
+      )}
     </div>
   )
 }

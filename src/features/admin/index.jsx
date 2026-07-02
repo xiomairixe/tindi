@@ -329,10 +329,9 @@ const AssignPlanModal = ({ user, onClose, onSuccess }) => {
 
 // ─── Main Component ────────────────────────────────────────────────────────
 export default function AdminDashboard() {
-  const navigate = useNavigate()
   const {
-    users, isLoading, isCheckingAdmin, error, isAdmin,
-    checkIsAdmin, fetchUsers, approveUser, suspendUser, unsuspendUser, getUserStatus,
+    users, isLoading, error,
+    fetchUsers, approveUser, suspendUser, unsuspendUser, getUserStatus,
   } = useAdminStore()
 
   const [statusFilter, setStatusFilter]   = useState('all')
@@ -344,13 +343,10 @@ export default function AdminDashboard() {
   const [actionLoading, setActionLoading] = useState(null)
   const [toast, setToast] = useState(null)
 
+  // AdminProtectedRoute na ang bahala sa pag-verify ng admin access —
+  // dito, i-load na lang natin ang users nang diretso.
   useEffect(() => {
-    const verify = async () => {
-      const ok = await checkIsAdmin()
-      if (!ok) navigate('/dashboard')
-      else fetchUsers()
-    }
-    verify()
+    fetchUsers()
   }, [])
 
   const showToast = (message, type = 'success') => {
@@ -413,9 +409,6 @@ export default function AdminDashboard() {
     showToast('Plan na-assign!')
     fetchUsers()
   }
-
-  if (isCheckingAdmin) return <FullScreenState title="Checking permissions..." />
-  if (!isAdmin) return <FullScreenState icon="🚫" title="Access Denied" subtitle="You do not have permission to access this page." />
 
   return (
     <div style={{ fontFamily: 'Inter, sans-serif', background: '#f9fafb', minHeight: '100vh' }}>
@@ -664,7 +657,9 @@ export default function AdminDashboard() {
                       className="action-btn"
                       style={{ background: '#16a34a', color: '#fff' }}
                     >
-                      <i className="ti ti-check" />
+                      {isActing
+                        ? <span style={{ display: 'inline-block', width: 12, height: 12, border: '2px solid #ffffff50', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                        : <i className="ti ti-check" />}
                       Approve
                     </button>
                   )}
