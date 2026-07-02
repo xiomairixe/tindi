@@ -8,6 +8,14 @@ import EditProductModal from './components/EditProductModal'
 import DeleteConfirmModal from './components/DeleteConfirmModal'
 import SuppliersModal from './suppliers/SupplierModal'
 
+// Max products allowed per plan tier. -1 = unlimited.
+// TODO: adjust these to match your actual pricing/plan rules.
+const PLAN_LIMITS = {
+  basic: 30,
+  advanced: 100,
+  pro: -1,
+}
+
 export default function InventoryPage() {
   const { user, storeId, isLoading: authLoading } = useAuthStore()
   const { products, isLoading, error, fetchProducts, deleteProduct } = useInventoryStore()
@@ -23,6 +31,8 @@ export default function InventoryPage() {
   const isAdvanced = ['advanced', 'pro'].includes(userPlan)
   // Stock/Reorder Level tracking ay Pro-only feature.
   const isPro = userPlan === 'pro'
+  // Product count limit base sa plan tier ng user.
+  const maxProducts = PLAN_LIMITS[userPlan] ?? PLAN_LIMITS.basic
 
   useEffect(() => {
     if (authLoading) return
@@ -42,8 +52,15 @@ export default function InventoryPage() {
 
   const categories = [...new Set(products.map((p) => p.category).filter(Boolean))]
 
+  const isAtProductLimit = maxProducts !== -1 && products.length >= maxProducts
+
   const handleEditProduct = (product) => setEditingProduct(product)
   const handleDeleteProduct = (product) => setDeletingProduct(product)
+
+  const handleOpenAddModal = () => {
+    if (isAtProductLimit) return
+    setShowAddModal(true)
+  }
 
   const confirmDelete = async () => {
     if (deletingProduct) {
@@ -80,6 +97,10 @@ export default function InventoryPage() {
           white-space: nowrap;
         }
         .inv-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(22,163,74,0.3); }
+        .inv-btn-primary:disabled {
+          background: #d1d5db; color: #6b7280; cursor: not-allowed;
+          box-shadow: none; transform: none; opacity: 0.7;
+        }
         .inv-btn-secondary {
           display: inline-flex; align-items: center; gap: 8px;
           padding: 10px 16px; border-radius: 10px; font-size: 14px;
@@ -158,7 +179,9 @@ export default function InventoryPage() {
                 Inventory
               </h1>
               <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>
-                {products.length} produkto • Tier: <span style={{ fontWeight: 600, color: '#374151' }}>{userPlan.toUpperCase()}</span>
+                {products.length}
+                {maxProducts !== -1 ? `/${maxProducts}` : ''} produkto • Tier:{' '}
+                <span style={{ fontWeight: 600, color: '#374151' }}>{userPlan.toUpperCase()}</span>
               </p>
             </div>
             <button className="inv-btn-secondary" onClick={() => setShowSuppliersModal(true)}>
@@ -202,6 +225,23 @@ export default function InventoryPage() {
           </div>
         )}
 
+        {isAtProductLimit && (
+          <div style={{
+            marginBottom: 20, padding: '14px 16px', background: '#fee2e2', borderRadius: 12,
+            border: '1.5px solid #fecaca', display: 'flex', gap: 10, alignItems: 'flex-start'
+          }}>
+            <i className="ti ti-alert-triangle" style={{ fontSize: 18, color: '#dc2626', flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
+            <div>
+              <p style={{ fontSize: 13, color: '#991b1b', margin: 0, fontWeight: 600 }}>
+                Umabot na sa product limit
+              </p>
+              <p style={{ fontSize: 12, color: '#a16207', margin: '4px 0 0', lineHeight: 1.5 }}>
+                Nakadagdag na ka ng {products.length}/{maxProducts} produkto. I-upgrade ang plan para mag-add pa.
+              </p>
+            </div>
+          </div>
+        )}
+
         {isLoading && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 20px' }}>
             <div style={{ textAlign: 'center' }}>
@@ -225,7 +265,11 @@ export default function InventoryPage() {
               {searchTerm ? 'Subukan ang ibang search term.' : 'Magsimula sa pag-add ng iyong unang produkto.'}
             </p>
             {!searchTerm && (
-              <button className="inv-btn-primary" onClick={() => setShowAddModal(true)}>
+              <button
+                className="inv-btn-primary"
+                onClick={handleOpenAddModal}
+                disabled={isAtProductLimit}
+              >
                 <i className="ti ti-plus" aria-hidden="true" /> Add Product
               </button>
             )}
@@ -252,7 +296,8 @@ export default function InventoryPage() {
       {/* ── FAB ── */}
       <button
         className="inv-btn-primary inv-fab"
-        onClick={() => setShowAddModal(true)}
+        onClick={handleOpenAddModal}
+        disabled={isAtProductLimit}
       >
         <i className="ti ti-plus" aria-hidden="true" /> Add Product
       </button>
@@ -265,6 +310,8 @@ export default function InventoryPage() {
         isPro={isPro}
         suppliers={suppliers}
         storeId={storeId}
+        currentProductCount={products.length}
+        maxProducts={maxProducts}
       />
 
       {editingProduct && (
