@@ -14,6 +14,7 @@ export default function AdminLayout() {
       { path: '/admin',            icon: 'ti-users',   label: 'User Management' },
       { path: '/admin/plans',      icon: 'ti-license', label: 'Plan Management' },
       { path: '/admin/payments',   icon: 'ti-receipt', label: 'Payment Requests' }, // ← dagdag ito
+      { path: '/admin/analytics',  icon: 'ti-chart-line', label: 'Analytics' }, // ← bago
     ]
 
   const handleLogout = async () => {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import { trackLogin } from '../lib/analytics'
 
 export default function LoginPage() {
   const { signIn } = useAuthStore()
@@ -22,9 +23,11 @@ export default function LoginPage() {
     setIsLoading(true)
     try {
       await signIn(email, password)
+      await trackLogin(email, true)
       navigate('/dashboard')
     } catch (err) {
       setError(err.message)
+      await trackLogin(email, false, { error: err.message })
     } finally {
       setIsLoading(false)
     }
@@ -383,4 +386,4 @@ export default function LoginPage() {
       </div>
     </div>
   )
-}
+} 

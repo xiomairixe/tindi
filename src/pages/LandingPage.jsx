@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
+import { trackPageView } from '../lib/analytics'
 
 /* Reusable scroll-reveal wrapper */
 function Reveal({ children, delay = 0, y = 28, style = {} }) {
@@ -53,6 +54,11 @@ export default function LandingPage() {
       window.removeEventListener('scroll', onScroll)
       document.documentElement.style.scrollBehavior = ''
     }
+  }, [])
+
+  // Track landing page visit
+  useEffect(() => {
+    trackPageView('/')
   }, [])
 
   useEffect(() => {

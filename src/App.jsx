@@ -18,7 +18,9 @@ import AdminDashboard from './features/admin'
 import PlansPage from './features/admin/plans'
 import PaymentRequestsPage from './features/admin/PaymentRequestsPage'
 import AdminLoginPage from './features/admin/AdminLoginPage'
+import AdminAnalytics from './features/admin/AdminAnalytics'
 import ProfilePage from './pages/ProfilePage'
+
 
 function AuthLoader() {
   return (
@@ -62,7 +64,7 @@ export default function App() {
           <Route path="/admin"         element={<AdminDashboard />} />
           <Route path="/admin/plans"   element={<PlansPage />} />
           <Route path="/admin/payments" element={<PaymentRequestsPage />} />
-          {/* <Route path="/admin/analytics" element={<AdminAnalytics />} /> */}
+          <Route path="/admin/analytics" element={<AdminAnalytics />} />
         </Route>
 
         {/* ── Regular app routes ── */}

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import { trackRegistration } from '../lib/analytics'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
@@ -38,6 +39,7 @@ export default function RegisterPage() {
 
     try {
       await signUp(form.email, form.password, form.storeName, form.ownerName)
+      await trackRegistration(form.email, { storeName: form.storeName, ownerName: form.ownerName })
       navigate('/login?registered=true')
     } catch (err) {
       setError(err.message)
