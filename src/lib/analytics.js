@@ -2,8 +2,9 @@ import { supabase } from './supabase'
 
 /**
  * Core logger — lahat ng event types dumaan dito.
- * Silent-fails (console.error lang) para hindi masira ang UX
- * kung sakaling magka-issue ang tracking insert.
+ * Tumatawag sa 'track-event' Edge Function para makuha ang tunay na
+ * IP address, device/browser/OS, at approximate location server-side.
+ * Silent-fails (console.error lang) para hindi masira ang UX.
  */
 export async function logAnalyticsEvent(eventType, options = {}) {
   try {
@@ -17,15 +18,18 @@ export async function logAnalyticsEvent(eventType, options = {}) {
       email = email || data?.user?.email || null
     }
 
-    await supabase.from('analytics_events').insert({
-      event_type: eventType,
-      user_id: userId,
-      email,
-      page_path: options.pagePath ?? (typeof window !== 'undefined' ? window.location.pathname : null),
-      referrer: typeof document !== 'undefined' ? document.referrer || null : null,
-      user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-      metadata: options.metadata || {},
+    const { error } = await supabase.functions.invoke('track-event', {
+      body: {
+        event_type: eventType,
+        user_id: userId,
+        email,
+        page_path: options.pagePath ?? (typeof window !== 'undefined' ? window.location.pathname : null),
+        referrer: typeof document !== 'undefined' ? document.referrer || null : null,
+        metadata: options.metadata || {},
+      },
     })
+
+    if (error) throw error
   } catch (err) {
     // hindi natin i-throw, tracking lang ito, hindi dapat sumira ng app
     console.error('Analytics tracking error:', err)
@@ -45,4 +49,4 @@ export function trackLogin(email, success, metadata) {
 /** Tawagin pagkatapos magtagumpay ang registration */
 export function trackRegistration(email, metadata) {
   return logAnalyticsEvent('registration', { email, metadata })
-}
+}   
