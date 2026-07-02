@@ -40,7 +40,7 @@ const PriceRow = ({ label, value }) => (
   </div>
 )
 
-export default function EditProductModal({ isOpen, product, onClose, isAdvanced, suppliers }) {
+export default function EditProductModal({ isOpen, product, onClose, isAdvanced, isPro = false, suppliers }) {
   const { updateProduct } = useInventoryStore()
   const fileInputRef = useRef(null)
 
@@ -130,7 +130,10 @@ export default function EditProductModal({ isOpen, product, onClose, isAdvanced,
     try {
       if (!formData.name.trim()) throw new Error('Kailangan ng pangalan ng produkto')
       if (!formData.cost_price) throw new Error('Kailangan ng cost price')
-      if (formData.quantity === null || formData.quantity === '') throw new Error('Kailangan ng quantity')
+      // Stock quantity ay Pro-only field, kaya required lang kapag Pro.
+      if (isPro && (formData.quantity === null || formData.quantity === '')) {
+        throw new Error('Kailangan ng quantity')
+      }
       if (isMultiPiece && formData.pieces_per_unit && parseFloat(formData.pieces_per_unit) <= 0) {
         throw new Error('Pieces per unit must be greater than 0')
       }
@@ -155,7 +158,8 @@ export default function EditProductModal({ isOpen, product, onClose, isAdvanced,
         cost_price: costPrice,
         markup_percentage: markupPercent,
         price: sellingPriceCalc,
-        quantity: parseInt(formData.quantity),
+        // Non-Pro plans can't edit stock; preserve whatever value the product already has.
+        quantity: isPro ? parseInt(formData.quantity) : (product.quantity ?? 0),
         category: formData.category,
         image_url: imageUrl,
         supplier_id: formData.supplier_id && formData.supplier_id !== '' ? formData.supplier_id : null,
@@ -436,21 +440,33 @@ export default function EditProductModal({ isOpen, product, onClose, isAdvanced,
           )}
         </div>
 
-        {/* Quantity */}
-        <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
-            Stock ({formData.unit_bought}) *
-          </label>
-          <input
-            type="number"
-            name="quantity"
-            value={formData.quantity}
-            onChange={handleInputChange}
-            placeholder="0"
-            min="0"
-            className="edit-product-input"
-          />
-        </div>
+        {/* Quantity — Pro plan only */}
+        {isPro ? (
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+              Stock ({formData.unit_bought}) *
+            </label>
+            <input
+              type="number"
+              name="quantity"
+              value={formData.quantity}
+              onChange={handleInputChange}
+              placeholder="0"
+              min="0"
+              className="edit-product-input"
+            />
+          </div>
+        ) : (
+          <div style={{
+            padding: '12px 14px', background: '#f9fafb', borderRadius: 10,
+            border: '1px dashed #e5e7eb', display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <i className="ti ti-lock" style={{ fontSize: 14, color: '#9ca3af' }} />
+            <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>
+              Stock tracking ay available sa Pro Plan.
+            </p>
+          </div>
+        )}
 
         {/* Supplier */}
         <div>

@@ -111,6 +111,13 @@ async function fetchPendingRequest(storeId) {
   return data ?? null
 }
 
+// Advanced/Pro tiers ay temporarily disabled sa upgrade flow — walang Mobile
+// App offline mode pa, kaya hindi pa dapat maka-upgrade dito ang mga user.
+// Tinutukoy base sa plan.name (hal. "Advanced Plan", "Pro Plan").
+function isLockedTier(planName) {
+  return /\b(advanced|pro)\b/i.test(planName || '')
+}
+
 // ── Small UI pieces ───────────────────────────────────────────────────────────
 
 function UsageBar({ label, used, max }) {
@@ -739,15 +746,17 @@ function UpgradeModal({ plans, currentPlanId, storeId, hasPending, onClose, onPa
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {plans.map(plan => {
             const isCurrent = plan.id === currentPlanId
+            const locked = isLockedTier(plan.name)
             const tierColor = plan.price === 0 ? '#6b7280' : plan.price < 500 ? '#2563eb' : '#9333ea'
-            const canUpgrade = !isCurrent && plan.price > 0 && !hasPending
+            const canUpgrade = !isCurrent && !locked && plan.price > 0 && !hasPending
 
             return (
               <div key={plan.id} style={{
                 border: `1.5px solid ${isCurrent ? '#16a34a' : '#e5e7eb'}`,
                 borderRadius: 12, padding: '16px 18px',
-                background: isCurrent ? '#f0fdf4' : '#fff',
+                background: isCurrent ? '#f0fdf4' : locked ? '#f9fafb' : '#fff',
                 position: 'relative',
+                opacity: locked && !isCurrent ? 0.85 : 1,
               }}>
                 {isCurrent && (
                   <span style={{
@@ -759,12 +768,24 @@ function UpgradeModal({ plans, currentPlanId, storeId, hasPending, onClose, onPa
                     KASALUKUYAN
                   </span>
                 )}
+                {locked && !isCurrent && (
+                  <span style={{
+                    position: 'absolute', top: -10, left: 14,
+                    background: '#9ca3af', color: '#fff',
+                    fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+                    padding: '2px 10px', borderRadius: 99,
+                  }}>
+                    COMING SOON
+                  </span>
+                )}
                 <div style={{
                   display: 'flex', justifyContent: 'space-between',
                   alignItems: 'flex-start', marginBottom: 10, gap: 10,
                 }}>
-                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#111827' }}>{plan.name}</p>
-                  <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: tierColor, flexShrink: 0 }}>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: locked && !isCurrent ? '#9ca3af' : '#111827' }}>
+                    {plan.name}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: locked && !isCurrent ? '#9ca3af' : tierColor, flexShrink: 0 }}>
                     {plan.price === 0 ? 'Free' : `₱${Number(plan.price).toLocaleString()}`}
                     {plan.price > 0 && <span style={{ fontSize: 11, fontWeight: 400, color: '#9ca3af' }}>/mo</span>}
                   </p>
@@ -773,12 +794,28 @@ function UpgradeModal({ plans, currentPlanId, storeId, hasPending, onClose, onPa
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 12 }}>
                     {plan.features.map((f, i) => (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <i className="ti ti-check" style={{ fontSize: 12, color: '#16a34a', flexShrink: 0 }} />
-                        <span style={{ fontSize: 12, color: '#4b5563' }}>{f}</span>
+                        <i className="ti ti-check" style={{ fontSize: 12, color: locked && !isCurrent ? '#d1d5db' : '#16a34a', flexShrink: 0 }} />
+                        <span style={{ fontSize: 12, color: locked && !isCurrent ? '#9ca3af' : '#4b5563' }}>{f}</span>
                       </div>
                     ))}
                   </div>
                 )}
+
+                {/* Locked notice — Advanced/Pro habang wala pang Mobile offline mode */}
+                {locked && !isCurrent && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    background: '#f3f4f6', border: '1px dashed #d1d5db',
+                    borderRadius: 8, padding: '9px 12px',
+                  }}>
+                    <i className="ti ti-lock" style={{ fontSize: 13, color: '#9ca3af', flexShrink: 0 }} />
+                    <span style={{ fontSize: 11.5, color: '#6b7280', lineHeight: 1.5 }}>
+                      Hindi pa available ang upgrade dito. Kailangan pa ng Mobile App
+                      offline mode bago i-enable ang plan na ito.
+                    </span>
+                  </div>
+                )}
+
                 {canUpgrade && (
                   <button
                     onClick={() => setTargetPlan(plan)}
@@ -805,7 +842,7 @@ function UpgradeModal({ plans, currentPlanId, storeId, hasPending, onClose, onPa
                     Kasalukuyang aktibong plan
                   </div>
                 )}
-                {!canUpgrade && !isCurrent && (
+                {!canUpgrade && !isCurrent && !locked && (
                   <div style={{ fontSize: 12, color: '#9ca3af' }}>
                     {plan.price === 0 ? 'Free plan (default)' : 'May pending request na'}
                   </div>

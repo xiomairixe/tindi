@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from 'date-fns'
 
-export default function ProductCard({ product, isAdvanced, onEdit, onDelete, suppliers }) {
+export default function ProductCard({ product, isAdvanced, isPro = false, onEdit, onDelete, suppliers }) {
   const imageUrl = product.image_url || null
 
   const isExpiringSoon = product.expiry_date && new Date(product.expiry_date) < new Date()
@@ -8,8 +8,9 @@ export default function ProductCard({ product, isAdvanced, onEdit, onDelete, sup
     ? Math.ceil((new Date(product.expiry_date) - new Date()) / (1000 * 60 * 60 * 24))
     : null
 
-  const lowStock = product.quantity <= 5
-  const noStock = product.quantity === 0
+  // Stock tracking ay Pro-only feature, kaya huwag i-highlight/i-display kung hindi Pro.
+  const lowStock = isPro && product.quantity <= 5
+  const noStock = isPro && product.quantity === 0
 
   const hasPerPiecePrice = product.pieces_per_unit > 0 && product.price_per_piece > 0
 
@@ -50,7 +51,7 @@ export default function ProductCard({ product, isAdvanced, onEdit, onDelete, sup
           <i className="ti ti-package" style={{ fontSize: 28, color: '#d1d5db' }} />
         )}
 
-        {/* No stock overlay */}
+        {/* No stock overlay — Pro only */}
         {noStock && (
           <div style={{
             position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)',
@@ -66,7 +67,7 @@ export default function ProductCard({ product, isAdvanced, onEdit, onDelete, sup
       {/* ── DETAILS ── */}
       <div style={{ flex: 1, padding: '10px 12px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
 
-        {/* Row 1: Name + Stock badge */}
+        {/* Row 1: Name + Stock badge (Pro only) */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
           <h3 style={{
             fontWeight: 700, color: noStock ? '#9ca3af' : '#111827', fontSize: 13,
@@ -75,14 +76,16 @@ export default function ProductCard({ product, isAdvanced, onEdit, onDelete, sup
           }}>
             {product.name}
           </h3>
-          <span style={{
-            fontSize: 10, fontWeight: 700, flexShrink: 0,
-            color: noStock ? '#92400e' : lowStock ? '#ea580c' : '#16a34a',
-            background: noStock ? '#fef9c3' : lowStock ? '#fff7ed' : '#f0fdf4',
-            padding: '2px 7px', borderRadius: 6, whiteSpace: 'nowrap',
-          }}>
-            {product.quantity ?? 0} {product.unit_bought || 'pcs'}
-          </span>
+          {isPro && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, flexShrink: 0,
+              color: noStock ? '#92400e' : lowStock ? '#ea580c' : '#16a34a',
+              background: noStock ? '#fef9c3' : lowStock ? '#fff7ed' : '#f0fdf4',
+              padding: '2px 7px', borderRadius: 6, whiteSpace: 'nowrap',
+            }}>
+              {product.quantity ?? 0} {product.unit_bought || 'pcs'}
+            </span>
+          )}
         </div>
 
         {/* Row 2: Category */}

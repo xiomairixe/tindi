@@ -21,6 +21,8 @@ export default function InventoryPage() {
 
   const userPlan = user?.user_metadata?.plan_tier || 'basic'
   const isAdvanced = ['advanced', 'pro'].includes(userPlan)
+  // Stock/Reorder Level tracking ay Pro-only feature.
+  const isPro = userPlan === 'pro'
 
   useEffect(() => {
     if (authLoading) return
@@ -237,6 +239,7 @@ export default function InventoryPage() {
                 key={product.id}
                 product={product}
                 isAdvanced={isAdvanced}
+                isPro={isPro}
                 onEdit={handleEditProduct}
                 onDelete={handleDeleteProduct}
                 suppliers={suppliers}
@@ -259,6 +262,7 @@ export default function InventoryPage() {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         isAdvanced={isAdvanced}
+        isPro={isPro}
         suppliers={suppliers}
         storeId={storeId}
       />
@@ -269,6 +273,7 @@ export default function InventoryPage() {
           product={editingProduct}
           onClose={() => setEditingProduct(null)}
           isAdvanced={isAdvanced}
+          isPro={isPro}
           suppliers={suppliers}
         />
       )}
@@ -289,4 +294,4 @@ export default function InventoryPage() {
       />
     </div>
   )
-} 
+}
