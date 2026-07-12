@@ -90,8 +90,11 @@ const ChartTooltip = ({ active, payload, label }) => {
   )
 }
 
-// ─── Export Lock Modal (Free plan / walang plan) ──────────────────────────
-function ExportLockModal({ onClose }) {
+// ─── Feature Lock Modal (Free plan / walang plan) ──────────────────────────
+// Generic na lock modal — ginagamit ng Export CSV at Scan Receipt.
+// Parehong locked ang dalawang feature na ito sa Free plan / walang plan;
+// available lang simula Basic Plan pataas.
+function FeatureLockModal({ title, description, onClose }) {
   const navigate = useNavigate()
   return (
     <>
@@ -122,11 +125,10 @@ function ExportLockModal({ onClose }) {
           fontSize: 16, fontWeight: 800, color: '#111827', margin: '0 0 8px',
           fontFamily: 'Plus Jakarta Sans, sans-serif',
         }}>
-          Hindi Kasama sa Free Plan
+          {title}
         </h3>
         <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 20px', lineHeight: 1.6 }}>
-          Ang Export Report ay available simula sa Basic Plan pataas.
-          I-upgrade ang plan mo para magamit ang feature na ito.
+          {description}
         </p>
         <div style={{ display: 'flex', gap: 10 }}>
           <button
@@ -167,7 +169,8 @@ export default function ExpensesPage() {
   const [filterType, setFilterType] = useState('monthly')
   const [selectedDate, setSelectedDate] = useState(todayStr())
   const [categoryFilter, setCategoryFilter] = useState('All')
-  const [showExportLock, setShowExportLock] = useState(false)
+  // 'export' | 'scan' | null — alin sa dalawang locked feature ang na-tap
+  const [featureLock, setFeatureLock] = useState(null)
 
   // ── Plan-based access check ──────────────────────────────────────
   // Export Report ay locked sa: No Plan (walang plan_id) AT Free Plan (price = 0).
@@ -209,7 +212,9 @@ export default function ExpensesPage() {
 
   // Locked kapag walang plan, o Free plan (price === 0). Habang naglo-load
   // pa ang plan price, huwag munang i-lock (avoid flash of locked state).
-  const hasNoExportAccess = !authLoading && !planLoading && (!store?.plan_id || planPrice === 0)
+  // Ginagamit ito ng Export CSV AT Scan Receipt — pareho silang locked sa
+  // Free plan / walang plan, available lang simula Basic Plan pataas.
+  const isFreePlan = !authLoading && !planLoading && (!store?.plan_id || planPrice === 0)
 
   const loadExpenses = () => {
     if (!storeId) return
@@ -313,13 +318,19 @@ export default function ExpensesPage() {
   const handleEditExpense = (expense) => { setEditingExpense(expense); setShowModal(true) }
   const handleCloseModal = () => { setShowModal(false); setEditingExpense(null) }
 
-  const handleOpenScan = () => setShowScanModal(true)
+  const handleOpenScan = () => {
+    if (isFreePlan) {
+      setFeatureLock('scan')
+      return
+    }
+    setShowScanModal(true)
+  }
   const handleCloseScan = () => setShowScanModal(false)
   const handleScanSaved = () => { loadExpenses() }
 
   const handleExport = () => {
-    if (hasNoExportAccess) {
-      setShowExportLock(true)
+    if (isFreePlan) {
+      setFeatureLock('export')
       return
     }
     exportToCSV(filteredExpenses, periodLabel)
@@ -380,6 +391,14 @@ export default function ExpensesPage() {
         .expense-fab-scan:hover {
           background: #f0fdfa; border-color: #99f6e4;
           box-shadow: 0 10px 24px rgba(13,148,136,0.22), 0 4px 8px rgba(0,0,0,0.08);
+        }
+        .expense-fab-scan.locked {
+          background: #f9fafb; color: #9ca3af; border-color: #e5e7eb;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .expense-fab-scan.locked:hover {
+          background: #f3f4f6; border-color: #e5e7eb;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
@@ -463,11 +482,11 @@ export default function ExpensesPage() {
             </div>
             {filteredExpenses.length > 0 && (
               <button
-                className={`expense-btn-secondary${hasNoExportAccess ? ' locked' : ''}`}
+                className={`expense-btn-secondary${isFreePlan ? ' locked' : ''}`}
                 onClick={handleExport}
-                title={hasNoExportAccess ? 'Available simula sa Basic Plan pataas' : 'I-download ang report bilang CSV'}
+                title={isFreePlan ? 'Available simula sa Basic Plan pataas' : 'I-download ang report bilang CSV'}
               >
-                <i className={`ti ${hasNoExportAccess ? 'ti-lock' : 'ti-download'}`} aria-hidden="true" />
+                <i className={`ti ${isFreePlan ? 'ti-lock' : 'ti-download'}`} aria-hidden="true" />
                 Export CSV
               </button>
             )}
@@ -787,8 +806,12 @@ export default function ExpensesPage() {
 
       {/* ── FLOATING ACTION BUTTONS ── */}
       <div className="expense-fab-group">
-        <button className="expense-fab expense-fab-scan" onClick={handleOpenScan}>
-          <i className="ti ti-camera" aria-hidden="true" style={{ fontSize: 16 }} />
+        <button
+          className={`expense-fab expense-fab-scan${isFreePlan ? ' locked' : ''}`}
+          onClick={handleOpenScan}
+          title={isFreePlan ? 'Available simula sa Basic Plan pataas' : 'Mag-scan ng resibo'}
+        >
+          <i className={`ti ${isFreePlan ? 'ti-lock' : 'ti-camera'}`} aria-hidden="true" style={{ fontSize: 16 }} />
           Scan Receipt
         </button>
         <button className="expense-fab" onClick={handleAddExpense}>
@@ -811,8 +834,20 @@ export default function ExpensesPage() {
         onSaved={handleScanSaved}
       />
 
-      {showExportLock && (
-        <ExportLockModal onClose={() => setShowExportLock(false)} />
+      {featureLock === 'export' && (
+        <FeatureLockModal
+          title="Hindi Kasama sa Free Plan"
+          description="Ang Export Report ay available simula sa Basic Plan pataas. I-upgrade ang plan mo para magamit ang feature na ito."
+          onClose={() => setFeatureLock(null)}
+        />
+      )}
+
+      {featureLock === 'scan' && (
+        <FeatureLockModal
+          title="Hindi Kasama sa Free Plan"
+          description="Ang Scan Receipt ay available simula sa Basic Plan pataas. I-upgrade ang plan mo para awtomatikong ma-scan at ma-log ang mga gastos mula sa resibo."
+          onClose={() => setFeatureLock(null)}
+        />
       )}
     </div>
   )
