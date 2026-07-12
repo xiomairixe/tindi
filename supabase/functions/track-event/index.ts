@@ -29,10 +29,24 @@ Deno.serve(async (req) => {
       })
     }
 
+    // ── DEBUG: log all incoming headers so we can see what Supabase actually forwards ──
+    // Tanggalin na lang ito once nalaman na natin yung tamang header.
+    console.log('--- Incoming headers ---')
+    for (const [key, value] of req.headers.entries()) {
+      console.log(`${key}: ${value}`)
+    }
+
     // ── Extract real client IP from request headers ──
     // x-forwarded-for can contain a chain: "client, proxy1, proxy2" — first entry is the real client
     const forwardedFor = req.headers.get('x-forwarded-for') || ''
-    const ip = forwardedFor.split(',')[0].trim() || req.headers.get('cf-connecting-ip') || null
+    const ip =
+      forwardedFor.split(',')[0].trim() ||
+      req.headers.get('cf-connecting-ip') ||
+      req.headers.get('x-real-ip') ||
+      req.headers.get('true-client-ip') ||
+      null
+
+    console.log('Resolved IP:', ip)
 
     // ── Parse User-Agent for device/browser/OS ──
     const uaString = req.headers.get('user-agent') || ''

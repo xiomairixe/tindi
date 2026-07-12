@@ -140,6 +140,27 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
+  // ─── Google OAuth sign-in ────────────────────────────────────────────────
+  // Nire-redirect ang user sa Google, pabalik sa app pagkatapos.
+  // Yung onAuthStateChange listener sa itaas (initializeAuth) ang
+  // bahalang tumawag sa _loadStore pagbalik niya galing Google —
+  // kaya kung bagong user, automatic na gagawa ng store row.
+  signInWithGoogle: async () => {
+    set({ error: null })
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      })
+      if (error) throw error
+    } catch (err) {
+      set({ error: err.message })
+      throw err
+    }
+  },
+
   signOut: async () => {
     set({ isLoading: true, error: null })
     try {

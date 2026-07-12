@@ -14,6 +14,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { useExpensesStore } from '../../stores/expensesStore'
 import { supabase } from '../../lib/supabase'
 import AddExpenseModal from './components/AddExpenseModal'
+import ReceiptScanModal from './components/ReceiptScanModal'
 
 const FILTERS = [
   { value: 'monthly', label: 'Monthly' },
@@ -162,6 +163,7 @@ export default function ExpensesPage() {
 
   const [showModal, setShowModal] = useState(false)
   const [editingExpense, setEditingExpense] = useState(null)
+  const [showScanModal, setShowScanModal] = useState(false)
   const [filterType, setFilterType] = useState('monthly')
   const [selectedDate, setSelectedDate] = useState(todayStr())
   const [categoryFilter, setCategoryFilter] = useState('All')
@@ -171,6 +173,7 @@ export default function ExpensesPage() {
   // Export Report ay locked sa: No Plan (walang plan_id) AT Free Plan (price = 0).
   // Available simula Basic Plan pataas. Parehong pattern gaya ng sa
   // UtangPage/SalesPage.
+  // NOTE: Ang Scan Receipt ay HINDI locked sa anumang plan — bukas sa lahat.
   const [planPrice, setPlanPrice] = useState(null)
   const [planLoading, setPlanLoading] = useState(true)
 
@@ -207,6 +210,11 @@ export default function ExpensesPage() {
   // Locked kapag walang plan, o Free plan (price === 0). Habang naglo-load
   // pa ang plan price, huwag munang i-lock (avoid flash of locked state).
   const hasNoExportAccess = !authLoading && !planLoading && (!store?.plan_id || planPrice === 0)
+
+  const loadExpenses = () => {
+    if (!storeId) return
+    fetchExpenses(storeId)
+  }
 
   useEffect(() => {
     if (authLoading) return
@@ -305,6 +313,10 @@ export default function ExpensesPage() {
   const handleEditExpense = (expense) => { setEditingExpense(expense); setShowModal(true) }
   const handleCloseModal = () => { setShowModal(false); setEditingExpense(null) }
 
+  const handleOpenScan = () => setShowScanModal(true)
+  const handleCloseScan = () => setShowScanModal(false)
+  const handleScanSaved = () => { loadExpenses() }
+
   const handleExport = () => {
     if (hasNoExportAccess) {
       setShowExportLock(true)
@@ -342,8 +354,11 @@ export default function ExpensesPage() {
           font-family: Inter, sans-serif; background: transparent; color: #6b7280;
           white-space: nowrap;
         }
-        .expense-fab {
+        .expense-fab-group {
           position: fixed; bottom: 28px; right: 28px; z-index: 100;
+          display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
+        }
+        .expense-fab {
           display: inline-flex; align-items: center; gap: 8px;
           padding: 14px 22px; border-radius: 50px; font-size: 14px; font-weight: 700;
           cursor: pointer; border: none; background: #16a34a; color: #fff;
@@ -357,6 +372,15 @@ export default function ExpensesPage() {
           background: #15803d;
         }
         .expense-fab:active { transform: translateY(0); box-shadow: 0 4px 12px rgba(22,163,74,0.3); }
+        .expense-fab-scan {
+          background: #fff; color: #0d9488; border: 1.5px solid #ccfbf1;
+          box-shadow: 0 6px 18px rgba(13,148,136,0.18), 0 2px 6px rgba(0,0,0,0.08);
+          padding: 12px 20px; font-size: 13px;
+        }
+        .expense-fab-scan:hover {
+          background: #f0fdfa; border-color: #99f6e4;
+          box-shadow: 0 10px 24px rgba(13,148,136,0.22), 0 4px 8px rgba(0,0,0,0.08);
+        }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
         /* ── Layout containers ── */
@@ -409,13 +433,16 @@ export default function ExpensesPage() {
           .expense-breakdown-grid { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
           .expense-pills-card { padding: 10px 12px; margin-bottom: 18px; }
 
-          /* Lift FAB above the fixed mobile bottom nav (~64px) + safe area */
-          .expense-fab {
+          /* Lift FAB group above the fixed mobile bottom nav (~64px) + safe area */
+          .expense-fab-group {
             bottom: calc(78px + env(safe-area-inset-bottom, 0px));
             right: 16px;
+          }
+          .expense-fab {
             padding: 13px 18px;
             font-size: 13px;
           }
+          .expense-fab-scan { padding: 11px 16px; font-size: 12px; }
         }
 
         @media (max-width: 420px) {
@@ -758,17 +785,30 @@ export default function ExpensesPage() {
         )}
       </div>
 
-      {/* ── FLOATING ACTION BUTTON ── */}
-      <button className="expense-fab" onClick={handleAddExpense}>
-        <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: 18 }} />
-        Add Expenses
-      </button>
+      {/* ── FLOATING ACTION BUTTONS ── */}
+      <div className="expense-fab-group">
+        <button className="expense-fab expense-fab-scan" onClick={handleOpenScan}>
+          <i className="ti ti-camera" aria-hidden="true" style={{ fontSize: 16 }} />
+          Scan Receipt
+        </button>
+        <button className="expense-fab" onClick={handleAddExpense}>
+          <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: 18 }} />
+          Add Expenses
+        </button>
+      </div>
 
       <AddExpenseModal
         isOpen={showModal}
         onClose={handleCloseModal}
         storeId={storeId}
         editingExpense={editingExpense}
+      />
+
+      <ReceiptScanModal
+        isOpen={showScanModal}
+        onClose={handleCloseScan}
+        storeId={storeId}
+        onSaved={handleScanSaved}
       />
 
       {showExportLock && (

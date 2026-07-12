@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useExpensesStore } from '../../../stores/expensesStore'
 import Modal from '../../inventory/components/Modal'
 
-const FIXED_CATEGORIES = [
+export const FIXED_CATEGORIES = [
   'Supplies',
   'Utilities',
   'Rent',
