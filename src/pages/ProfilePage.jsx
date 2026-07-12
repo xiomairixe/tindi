@@ -115,7 +115,7 @@ async function fetchPendingRequest(storeId) {
 // App offline mode pa, kaya hindi pa dapat maka-upgrade dito ang mga user.
 // Tinutukoy base sa plan.name (hal. "Advanced Plan", "Pro Plan").
 function isLockedTier(planName) {
-  return /\b(advanced|pro)\b/i.test(planName || '')
+  return /\b(advance|pro)\b/i.test(planName || '')
 }
 
 // ── Small UI pieces ───────────────────────────────────────────────────────────
