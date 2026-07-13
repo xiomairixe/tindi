@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from 'date-fns'
 
-export default function ProductCard({ product, isAdvanced, isPro = false, onEdit, onDelete, suppliers }) {
+export default function ProductCard({ product, isAdvanced, isPro = false, onEdit, onDelete, onViewHistory, suppliers }) {
   const imageUrl = product.image_url || null
 
   const isExpiringSoon = product.expiry_date && new Date(product.expiry_date) < new Date()
@@ -97,12 +97,12 @@ export default function ProductCard({ product, isAdvanced, isPro = false, onEdit
 
         {/* Row 3: Cost */}
         {hasPerPiecePrice && (
-          <p style={{ fontSize: 11, color: '#6b7280', margin: 0 }}>
-            Cost: ₱{product.price?.toFixed(2)} / {product.unit_bought} ({product.pieces_per_unit} pcs)
-          </p>
-        )}
+            <p style={{ fontSize: 11, color: '#6b7280', margin: 0 }}>
+              Cost: ₱{product.cost_price?.toFixed(2)} / {product.unit_bought} ({product.pieces_per_unit} pcs)
+            </p>
+          )}
 
-        {/* Row 4: Price per piece + expiry/supplier */}
+        {/* Row 4: Price per piece + action buttons */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
           <div>
             {hasPerPiecePrice ? (
@@ -122,6 +122,19 @@ export default function ProductCard({ product, isAdvanced, isPro = false, onEdit
 
           {/* Action buttons */}
           <div style={{ display: 'flex', gap: 4 }}>
+            <button
+              onClick={() => onViewHistory(product)}
+              style={{
+                width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 8,
+                cursor: 'pointer', fontSize: 13, transition: 'all 0.15s ease',
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.background = '#e5e7eb' }}
+              onMouseOut={(e) => { e.currentTarget.style.background = '#f3f4f6' }}
+              title="Price History"
+            >
+              <i className="ti ti-history" />
+            </button>
             <button
               onClick={() => onEdit(product)}
               style={{

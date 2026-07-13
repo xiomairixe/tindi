@@ -7,6 +7,7 @@ import ProductCard from './components/ProductCard'
 import AddProductModal from './components/AddProductModal'
 import EditProductModal from './components/EditProductModal'
 import DeleteConfirmModal from './components/DeleteConfirmModal'
+import PriceHistoryModal from './components/PriceHistoryModal'
 import SuppliersModal from './suppliers/SupplierModal'
 
 export default function InventoryPage() {
@@ -16,6 +17,7 @@ export default function InventoryPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
   const [deletingProduct, setDeletingProduct] = useState(null)
+  const [historyProduct, setHistoryProduct] = useState(null)
   const [showSuppliersModal, setShowSuppliersModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterCategory, setFilterCategory] = useState('all')
@@ -90,6 +92,7 @@ export default function InventoryPage() {
 
   const handleEditProduct = (product) => setEditingProduct(product)
   const handleDeleteProduct = (product) => setDeletingProduct(product)
+  const handleViewHistory = (product) => setHistoryProduct(product)
 
   const handleOpenAddModal = () => {
     // Soft pre-check lang para sa UX (agad na naka-disable ang button).
@@ -322,6 +325,7 @@ export default function InventoryPage() {
                 isPro={isPro}
                 onEdit={handleEditProduct}
                 onDelete={handleDeleteProduct}
+                onViewHistory={handleViewHistory}
                 suppliers={suppliers}
               />
             ))}
@@ -365,6 +369,14 @@ export default function InventoryPage() {
           productName={deletingProduct.name}
           onConfirm={confirmDelete}
           onCancel={() => setDeletingProduct(null)}
+        />
+      )}
+
+      {historyProduct && (
+        <PriceHistoryModal
+          isOpen={!!historyProduct}
+          product={historyProduct}
+          onClose={() => setHistoryProduct(null)}
         />
       )}
 

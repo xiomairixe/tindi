@@ -178,7 +178,8 @@ export default function EditProductModal({ isOpen, product, onClose, isAdvanced,
         productData.expiry_date = formData.expiry_date
       }
 
-      await updateProduct(product.id, productData)
+      // Ipinapasa ang `product` (lumang values pa) bilang snapshot para sa price history.
+      await updateProduct(product.id, productData, product)
       onClose()
     } catch (err) {
       setError(err.message)
