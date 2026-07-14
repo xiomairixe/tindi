@@ -12,7 +12,7 @@ import SuppliersModal from './suppliers/SupplierModal'
 
 export default function InventoryPage() {
   const { user, storeId, store, isLoading: authLoading } = useAuthStore()
-  const { products, isLoading, error, fetchProducts, deleteProduct } = useInventoryStore()
+  const { products, isLoading, error, fetchProducts, deleteProduct, seedDefaultProductsIfNeeded } = useInventoryStore()
   const { suppliers, fetchSuppliers } = useSuppliersStore()
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
@@ -21,6 +21,7 @@ export default function InventoryPage() {
   const [showSuppliersModal, setShowSuppliersModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterCategory, setFilterCategory] = useState('all')
+  const [seeding, setSeeding] = useState(false)
 
   const userPlan = user?.user_metadata?.plan_tier || 'basic'
   const isAdvanced = ['advanced', 'pro'].includes(userPlan)
@@ -108,6 +109,27 @@ export default function InventoryPage() {
     }
   }
 
+  // ── Sample products seeding ───────────────────────────────────────────
+  // User-triggered — hindi na automatic sa registration. Ang RPC function
+  // mismo sa Supabase ang bahalang mag-skip ng mga product na pareho na
+  // ang pangalan sa store, kaya ligtas kahit paulit-ulit i-click.
+  const handleSeedProducts = async () => {
+    if (!storeId || seeding || isAtProductLimit) return
+    setSeeding(true)
+    try {
+      const count = await seedDefaultProductsIfNeeded(storeId)
+      if (count > 0) {
+        alert(`${count} sample product${count > 1 ? 's' : ''} ang naidagdag sa inventory mo!`)
+      } else {
+        alert('Wala nang maidadagdag — kompleto na o naka-duplicate na lahat ng sample products.')
+      }
+    } catch (err) {
+      alert('May error sa pag-add ng sample products. Subukan ulit.')
+    } finally {
+      setSeeding(false)
+    }
+  }
+
   return (
     <div style={{ fontFamily: 'Inter, sans-serif', background: '#f9fafb', minHeight: '100vh' }}>
       <style>{`
@@ -148,6 +170,9 @@ export default function InventoryPage() {
           font-family: Inter, sans-serif; white-space: nowrap;
         }
         .inv-btn-secondary:hover { background: #f9fafb; border-color: #d1d5db; }
+        .inv-btn-secondary:disabled {
+          cursor: not-allowed; opacity: 0.6;
+        }
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
@@ -156,6 +181,7 @@ export default function InventoryPage() {
         /* ── Layout containers ── */
         .inv-header { padding: 24px 28px; }
         .inv-header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+        .inv-header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         .inv-filters { padding: 16px 28px; }
         .inv-content { padding: 24px 28px; }
         .inv-grid {
@@ -186,6 +212,7 @@ export default function InventoryPage() {
           .inv-header { padding: 16px 16px; }
           .inv-header-row { flex-direction: column; align-items: stretch; gap: 12px; margin-bottom: 12px; }
           .inv-header-row h1 { font-size: 22px !important; }
+          .inv-header-actions { flex-direction: column; align-items: stretch; }
           .inv-btn-secondary { justify-content: center; }
 
           .inv-filters { padding: 12px 16px; }
@@ -223,9 +250,20 @@ export default function InventoryPage() {
                 <span style={{ fontWeight: 600, color: '#374151' }}>{userPlan.toUpperCase()}</span>
               </p>
             </div>
-            <button className="inv-btn-secondary" onClick={() => setShowSuppliersModal(true)}>
-              <i className="ti ti-building-store" aria-hidden="true" /> Mga Suppliers
-            </button>
+            <div className="inv-header-actions">
+              <button
+                className="inv-btn-secondary"
+                onClick={handleSeedProducts}
+                disabled={seeding || isAtProductLimit}
+                title="Mag-add ng common sari-sari store products na may sample images"
+              >
+                <i className={`ti ${seeding ? 'ti-loader-3' : 'ti-sparkles'}`} style={seeding ? { animation: 'spin 1s linear infinite' } : undefined} aria-hidden="true" />
+                {seeding ? 'Nagse-seed...' : 'Mag-add ng Sample Products'}
+              </button>
+              <button className="inv-btn-secondary" onClick={() => setShowSuppliersModal(true)}>
+                <i className="ti ti-building-store" aria-hidden="true" /> Mga Suppliers
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -301,16 +339,26 @@ export default function InventoryPage() {
               {searchTerm ? 'Walang resultado' : 'Walang produkto pa'}
             </h3>
             <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 20px' }}>
-              {searchTerm ? 'Subukan ang ibang search term.' : 'Magsimula sa pag-add ng iyong unang produkto.'}
+              {searchTerm ? 'Subukan ang ibang search term.' : 'Magsimula sa pag-add ng iyong unang produkto, o gumamit ng sample products.'}
             </p>
             {!searchTerm && (
-              <button
-                className="inv-btn-primary"
-                onClick={handleOpenAddModal}
-                disabled={isAtProductLimit}
-              >
-                <i className="ti ti-plus" aria-hidden="true" /> Add Product
-              </button>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button
+                  className="inv-btn-primary"
+                  onClick={handleOpenAddModal}
+                  disabled={isAtProductLimit}
+                >
+                  <i className="ti ti-plus" aria-hidden="true" /> Add Product
+                </button>
+                <button
+                  className="inv-btn-secondary"
+                  onClick={handleSeedProducts}
+                  disabled={seeding || isAtProductLimit}
+                >
+                  <i className={`ti ${seeding ? 'ti-loader-3' : 'ti-sparkles'}`} style={seeding ? { animation: 'spin 1s linear infinite' } : undefined} aria-hidden="true" />
+                  {seeding ? 'Nagse-seed...' : 'Mag-add ng Sample Products'}
+                </button>
+              </div>
             )}
           </div>
         )}
